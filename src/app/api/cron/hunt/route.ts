@@ -14,11 +14,21 @@ export async function GET(request: Request) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data: companies } = await supabase
+  const { data: companies, error: companiesError } = await supabase
     .from("companies")
     .select("id,name,moat_description,competitors(id,comp_name,website)")
     .eq("monitoring_enabled", true)
     .limit(25);
+
+  if (companiesError) {
+    return NextResponse.json(
+      {
+        error: "Could not load monitored companies.",
+        detail: companiesError.message
+      },
+      { status: 500 }
+    );
+  }
 
   const gemini = createGeminiClient();
   const tavily = createTavilyClient();
