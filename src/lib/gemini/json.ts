@@ -6,8 +6,17 @@ import { serviceFailure, serviceSuccess } from "@/lib/agents/types";
 export function stripJsonFences(value: string): string {
   const trimmed = value.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const embeddedFence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
 
-  return fenced ? fenced[1].trim() : trimmed;
+  if (fenced) {
+    return fenced[1].trim();
+  }
+
+  if (embeddedFence) {
+    return embeddedFence[1].trim();
+  }
+
+  return trimmed;
 }
 
 export function parseJsonStrict<T = unknown>(value: string): ServiceResult<T> {

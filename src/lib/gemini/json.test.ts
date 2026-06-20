@@ -8,6 +8,10 @@ describe("Gemini JSON helpers", () => {
     expect(stripJsonFences("```json\n{\"name\":\"Acme\"}\n```")).toBe("{\"name\":\"Acme\"}");
   });
 
+  it("strips embedded markdown JSON fences after model preamble", () => {
+    expect(stripJsonFences("Here is the JSON:\n```json\n{\"name\":\"Acme\"}\n```")).toBe("{\"name\":\"Acme\"}");
+  });
+
   it("parses plain JSON into a typed success result", () => {
     const result = parseJsonStrict<{ name: string }>("{\"name\":\"Acme\"}");
 
