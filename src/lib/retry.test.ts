@@ -62,4 +62,33 @@ describe("retry", () => {
 
     expect(attempts).toBe(3);
   });
+
+  it("awaits delay between retryable attempts with attempt and error", async () => {
+    const errors: string[] = [];
+    const attempts: number[] = [];
+    let operationAttempts = 0;
+
+    const result = await retry(
+      async () => {
+        operationAttempts += 1;
+        if (operationAttempts < 3) {
+          throw new Error(`failure ${operationAttempts}`);
+        }
+        return "recovered";
+      },
+      {
+        maxAttempts: 3,
+        retryable: () => true,
+        delay: async (attempt, error) => {
+          attempts.push(attempt);
+          errors.push(error instanceof Error ? error.message : "unknown");
+          return 0;
+        }
+      }
+    );
+
+    expect(result).toBe("recovered");
+    expect(attempts).toEqual([1, 2]);
+    expect(errors).toEqual(["failure 1", "failure 2"]);
+  });
 });

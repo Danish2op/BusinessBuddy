@@ -71,4 +71,55 @@ describe("normalizeTavilyResults", () => {
       }
     ]);
   });
+
+  it("rejects non-http URLs", () => {
+    const results = normalizeTavilyResults({
+      results: [
+        {
+          title: "Bad script",
+          url: "javascript:alert(1)",
+          content: "Unsafe"
+        },
+        {
+          title: "Bad mail",
+          url: "mailto:team@example.com",
+          content: "Unsafe"
+        },
+        {
+          title: "Good",
+          url: "https://safe.example.com/update",
+          content: "Safe"
+        }
+      ]
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://safe.example.com/update");
+  });
+
+  it("skips malformed result items inside results arrays", () => {
+    const results = normalizeTavilyResults({
+      results: [
+        null,
+        "not an object",
+        ["array"],
+        {
+          title: "Valid",
+          url: "https://example.com/news",
+          content: "Useful"
+        }
+      ]
+    });
+
+    expect(results).toEqual([
+      {
+        title: "Valid",
+        url: "https://example.com/news",
+        domain: "example.com",
+        content: "Useful",
+        score: undefined,
+        publishedDate: undefined
+      }
+    ]);
+  });
 });

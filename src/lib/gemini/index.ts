@@ -60,10 +60,11 @@ export function createGeminiClient(options: GeminiClientOptions = {}) {
     generationOptions: GeminiGenerateOptions = {}
   ): Promise<ServiceResult<string>> {
     try {
-      const response = await fetcher(`${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`, {
+      const response = await fetcher(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
         },
         body: JSON.stringify({
           contents: [

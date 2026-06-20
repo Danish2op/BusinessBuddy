@@ -33,6 +33,10 @@ function toCleanString(value: unknown): string | undefined {
 function canonicalizeUrl(value: string): string | undefined {
   try {
     const parsed = new URL(value);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname) {
+      return undefined;
+    }
+
     parsed.protocol = parsed.protocol.toLowerCase();
     parsed.hostname = parsed.hostname.toLowerCase();
     parsed.hash = "";
@@ -54,6 +58,10 @@ function canonicalizeUrl(value: string): string | undefined {
   }
 }
 
+function isTavilyResultLike(value: unknown): value is TavilyResultLike {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function domainFromUrl(value: string): string {
   return new URL(value).hostname.replace(/^www\./i, "");
 }
@@ -64,7 +72,7 @@ function extractResults(response: unknown): TavilyResultLike[] {
   }
 
   const results = (response as { results?: unknown }).results;
-  return Array.isArray(results) ? (results as TavilyResultLike[]) : [];
+  return Array.isArray(results) ? results.filter(isTavilyResultLike) : [];
 }
 
 export function normalizeTavilyResults(response: unknown): NormalizedTavilyResult[] {
