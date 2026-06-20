@@ -1,6 +1,7 @@
 import { Activity, AlertTriangle, Radar, Shield } from "lucide-react";
 
 import { AdvisorChat } from "@/components/advisor/advisor-chat";
+import { MonitoringToggle } from "@/components/dashboard/monitoring-toggle";
 
 const competitors = [
   { name: "Northstar AI", risk: "high", signal: "Launched pricing page update" },
@@ -41,6 +42,7 @@ export function WarRoom() {
               <Activity size={16} className="text-[var(--green)]" />
               Last scan: standby
             </div>
+            <MonitoringToggle />
           </header>
           <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
             <section className="rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-5">

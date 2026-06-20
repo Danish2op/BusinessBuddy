@@ -3,6 +3,26 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 describe("createGeminiClient", () => {
+  it("defaults to the available Gemini 2.5 Flash model", async () => {
+    const { createGeminiClient } = await import("./index");
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ input, init });
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: "{\"ok\":true}" }] } }]
+      });
+    };
+
+    const client = createGeminiClient({
+      apiKey: "secret-key",
+      fetcher
+    });
+
+    await client.generateText("Return JSON.");
+
+    expect(String(calls[0].input)).toContain("/models/gemini-2.5-flash:generateContent");
+  });
+
   it("sends the API key through a header instead of the request URL", async () => {
     const { createGeminiClient } = await import("./index");
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];

@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const { data: companies } = await supabase
     .from("companies")
     .select("id,name,moat_description,competitors(id,comp_name,website)")
+    .eq("monitoring_enabled", true)
     .limit(25);
 
   const gemini = createGeminiClient();
