@@ -16,8 +16,7 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data: companies, error: companiesError } = await supabase
     .from("companies")
-    .select("id,name,moat_description,competitors(id,comp_name,website)")
-    .eq("monitoring_enabled", true)
+    .select("id,name,moat_description,ai_generated_profile,competitors(id,comp_name,website)")
     .limit(25);
 
   if (companiesError) {
@@ -35,7 +34,12 @@ export async function GET(request: Request) {
   const resend = createResendClient();
   const reports = [];
 
-  for (const company of companies ?? []) {
+  const monitoredCompanies = (companies ?? []).filter((company) => {
+    const profile = company.ai_generated_profile as { monitoring_enabled?: unknown } | null;
+    return profile?.monitoring_enabled === true;
+  });
+
+  for (const company of monitoredCompanies) {
     const result = await runContinuousHunt(
       {
         company,

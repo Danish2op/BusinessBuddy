@@ -15,8 +15,7 @@ create table public.companies (
   moat_description text,
   team_details text,
   industry text,
-  ai_generated_profile jsonb,
-  monitoring_enabled boolean not null default false
+  ai_generated_profile jsonb
 );
 
 create table public.competitors (

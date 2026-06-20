@@ -98,7 +98,6 @@ describe("Supabase schema", () => {
     expect(companies).toContain("team_details text");
     expect(companies).toContain("industry text");
     expect(companies).toContain("ai_generated_profile jsonb");
-    expect(companies).toContain("monitoring_enabled boolean not null default false");
     expect(columnNames(tableBlock(schema, "companies"))).toEqual([
       "id",
       "user_id",
@@ -108,8 +107,7 @@ describe("Supabase schema", () => {
       "moat_description",
       "team_details",
       "industry",
-      "ai_generated_profile",
-      "monitoring_enabled"
+      "ai_generated_profile"
     ]);
 
     expect(competitors).toContain("company_id uuid not null references public.companies(id) on delete cascade");

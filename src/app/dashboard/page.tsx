@@ -13,10 +13,12 @@ export default async function DashboardPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,monitoring_enabled")
+    .select("id,ai_generated_profile")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
-  return <WarRoom companyId={company?.id} monitoringEnabled={company?.monitoring_enabled ?? false} />;
+  const profile = company?.ai_generated_profile as { monitoring_enabled?: unknown } | null | undefined;
+
+  return <WarRoom companyId={company?.id} monitoringEnabled={profile?.monitoring_enabled === true} />;
 }
