@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const projectRoot = join(__dirname, "../../..");
 const schemaPath = join(projectRoot, "supabase/schema.sql");
 const browserClientPath = join(__dirname, "browser.ts");
+const serverClientPath = join(__dirname, "server.ts");
 const adminClientPath = join(__dirname, "admin.ts");
 
 function read(path: string) {
@@ -30,6 +31,40 @@ function tableBlock(sql: string, tableName: string) {
   );
 
   return match?.groups?.body ?? "";
+}
+
+function splitTopLevelColumns(tableSql: string) {
+  const columns: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let index = 0; index < tableSql.length; index += 1) {
+    const character = tableSql[index];
+
+    if (character === "(") {
+      depth += 1;
+    }
+
+    if (character === ")") {
+      depth -= 1;
+    }
+
+    if (character === "," && depth === 0) {
+      columns.push(tableSql.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  columns.push(tableSql.slice(start).trim());
+
+  return columns.filter(Boolean);
+}
+
+function columnNames(tableSql: string) {
+  return splitTopLevelColumns(tableSql)
+    .map((column) => normalizeSql(column))
+    .filter((column) => !column.startsWith("constraint ") && !column.startsWith("foreign key "))
+    .map((column) => column.split(" ")[0]);
 }
 
 function policyBlock(sql: string, policyName: string) {
@@ -63,6 +98,17 @@ describe("Supabase schema", () => {
     expect(companies).toContain("team_details text");
     expect(companies).toContain("industry text");
     expect(companies).toContain("ai_generated_profile jsonb");
+    expect(columnNames(tableBlock(schema, "companies"))).toEqual([
+      "id",
+      "user_id",
+      "name",
+      "website",
+      "linkedin_url",
+      "moat_description",
+      "team_details",
+      "industry",
+      "ai_generated_profile"
+    ]);
 
     expect(competitors).toContain("company_id uuid not null references public.companies(id) on delete cascade");
     expect(competitors).toContain("comp_name text not null");
@@ -70,8 +116,17 @@ describe("Supabase schema", () => {
     expect(competitors).toContain("analysis_summary text");
     expect(competitors).toContain("risk_level text");
     expect(competitors).toContain("last_scanned timestamptz");
+    expect(columnNames(tableBlock(schema, "competitors"))).toEqual([
+      "id",
+      "company_id",
+      "comp_name",
+      "website",
+      "analysis_summary",
+      "risk_level",
+      "last_scanned"
+    ]);
 
-    expect(reports).toContain("competitor_id uuid not null references public.competitors(id) on delete cascade");
+    expect(reports).toContain("competitor_id uuid not null");
     expect(reports).toContain("company_id uuid not null references public.companies(id) on delete cascade");
     expect(reports).toContain("summary text not null");
     expect(reports).toContain("source_url text");
@@ -82,6 +137,13 @@ describe("Supabase schema", () => {
   it("enforces allowed risk and report category values", () => {
     expect(normalizedSchema).toContain("risk_level in ('low', 'med', 'high')");
     expect(compactSql(schema)).toContain("category in ('Pricing', 'Product', 'Hiring', 'News')");
+  });
+
+  it("enforces report competitor and company consistency", () => {
+    expect(normalizedSchema).toContain("unique (id, company_id)");
+    expect(normalizedSchema).toContain(
+      "foreign key (competitor_id, company_id) references public.competitors(id, company_id)"
+    );
   });
 
   it("adds ownership and report feed indexes", () => {
@@ -143,6 +205,18 @@ describe("Supabase clients", () => {
     expect(browserClient).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
     expect(browserClient).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(browserClient).toContain("createBrowserClient");
+  });
+
+  it("uses an anon-key cookie-aware server client", () => {
+    const serverClient = read(serverClientPath);
+
+    expect(serverClient).toContain("createServerClient");
+    expect(serverClient).toContain("cookies()");
+    expect(serverClient).toContain("NEXT_PUBLIC_SUPABASE_URL");
+    expect(serverClient).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    expect(serverClient).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(serverClient).toContain("getAll");
+    expect(serverClient).toContain("setAll");
   });
 
   it("keeps the admin client server-only and service-role based", () => {

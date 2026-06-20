@@ -15,8 +15,7 @@ create table public.companies (
   moat_description text,
   team_details text,
   industry text,
-  ai_generated_profile jsonb,
-  created_at timestamptz default now()
+  ai_generated_profile jsonb
 );
 
 create table public.competitors (
@@ -27,17 +26,19 @@ create table public.competitors (
   analysis_summary text,
   risk_level text not null default 'low' check (risk_level in ('low', 'med', 'high')),
   last_scanned timestamptz,
-  created_at timestamptz default now()
+  constraint competitors_id_company_id_key unique (id, company_id)
 );
 
 create table public.intelligence_reports (
   id uuid primary key default gen_random_uuid(),
-  competitor_id uuid not null references public.competitors(id) on delete cascade,
+  competitor_id uuid not null,
   company_id uuid not null references public.companies(id) on delete cascade,
   summary text not null,
   source_url text,
   category text not null check (category in ('Pricing', 'Product', 'Hiring', 'News')),
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  constraint intelligence_reports_competitor_company_fk
+    foreign key (competitor_id, company_id) references public.competitors(id, company_id) on delete cascade
 );
 
 create index companies_user_id_idx on public.companies(user_id);
