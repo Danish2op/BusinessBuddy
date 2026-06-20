@@ -15,7 +15,12 @@ const feed = [
   "Product launch language overlaps your moat"
 ];
 
-export function WarRoom() {
+type WarRoomProps = {
+  companyId?: string;
+  monitoringEnabled?: boolean;
+};
+
+export function WarRoom({ companyId, monitoringEnabled = false }: WarRoomProps) {
   return (
     <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
@@ -42,7 +47,7 @@ export function WarRoom() {
               <Activity size={16} className="text-[var(--green)]" />
               Last scan: standby
             </div>
-            <MonitoringToggle />
+            <MonitoringToggle companyId={companyId} initialEnabled={monitoringEnabled} />
           </header>
           <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
             <section className="rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-5">
