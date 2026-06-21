@@ -1,26 +1,49 @@
-import { Activity, AlertTriangle, Radar, Shield } from "lucide-react";
+import { Activity, AlertTriangle, Plus, Radar, Shield } from "lucide-react";
 
 import { AdvisorChat } from "@/components/advisor/advisor-chat";
+import { CompetitorForm } from "@/components/dashboard/competitor-form";
 import { MonitoringToggle } from "@/components/dashboard/monitoring-toggle";
+import { WebsiteIntelButton } from "@/components/dashboard/website-intel-button";
 
-const competitors = [
-  { name: "Northstar AI", risk: "high", signal: "Launched pricing page update" },
-  { name: "SignalForge", risk: "med", signal: "Hiring enterprise AE team" },
-  { name: "ScoutOps", risk: "low", signal: "Published comparison guide" }
-];
+export type DashboardCompetitor = {
+  id: string;
+  comp_name: string;
+  website: string | null;
+  analysis_summary: string | null;
+  risk_level: "low" | "med" | "high";
+};
 
-const feed = [
-  "Pricing signal detected from Northstar AI",
-  "Hiring expansion suggests enterprise push",
-  "Product launch language overlaps your moat"
-];
+export type DashboardReport = {
+  id: string;
+  summary: string;
+  category: string;
+  created_at: string | null;
+};
 
 type WarRoomProps = {
   companyId?: string;
+  companyName?: string;
+  moatDescription?: string | null;
   monitoringEnabled?: boolean;
+  knowledgeBlock?: {
+    summary?: string;
+    offerings?: string[];
+    positioning?: string;
+    keywords?: string[];
+  };
+  competitors?: DashboardCompetitor[];
+  reports?: DashboardReport[];
 };
 
-export function WarRoom({ companyId, monitoringEnabled = false }: WarRoomProps) {
+export function WarRoom({
+  companyId,
+  companyName = "No company configured",
+  moatDescription,
+  monitoringEnabled = false,
+  knowledgeBlock,
+  competitors = [],
+  reports = []
+}: WarRoomProps) {
   return (
     <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
@@ -41,13 +64,14 @@ export function WarRoom({ companyId, monitoringEnabled = false }: WarRoomProps) 
           <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-muted)] pb-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-[var(--amber)]">War-room active</p>
-              <h1 className="mt-2 text-2xl font-semibold">Battlefield State</h1>
+              <h1 className="mt-2 text-2xl font-semibold">{companyName}</h1>
             </div>
             <div className="flex items-center gap-2 rounded-md border border-[var(--border-muted)] px-3 py-2 text-sm text-[var(--text-secondary)]">
               <Activity size={16} className="text-[var(--green)]" />
               Last scan: standby
             </div>
             <MonitoringToggle companyId={companyId} initialEnabled={monitoringEnabled} />
+            <WebsiteIntelButton companyId={companyId} />
           </header>
           <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
             <section className="rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-5">
@@ -56,36 +80,58 @@ export function WarRoom({ companyId, monitoringEnabled = false }: WarRoomProps) 
                 <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Strategic Summary</h2>
               </div>
               <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                Market pressure is moderate. Main watch item is pricing compression from adjacent AI intelligence
-                tools. Defend with workflow depth and founder-grade brief quality.
+                {moatDescription ||
+                  "Complete setup to create a moat profile. Monitoring stays paused until you turn it on."}
               </p>
+              {knowledgeBlock?.summary && (
+                <div className="mt-4 border-t border-[var(--border-muted)] pt-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">Website intel</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{knowledgeBlock.summary}</p>
+                  {knowledgeBlock.positioning && (
+                    <p className="mt-2 text-xs text-[var(--text-muted)]">Positioning: {knowledgeBlock.positioning}</p>
+                  )}
+                </div>
+              )}
             </section>
             <section className="rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <AlertTriangle size={18} className="text-[var(--amber)]" />
-                <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Radar View</h2>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-[var(--amber)]" />
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Radar View</h2>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <Plus size={14} />
+                  Manual add below
+                </div>
               </div>
               <div className="grid gap-3">
+                {competitors.length === 0 && (
+                  <p className="rounded border border-[var(--border-muted)] p-3 text-sm text-[var(--text-muted)]">
+                    No competitors yet. Add one manually or run setup discovery.
+                  </p>
+                )}
                 {competitors.map((competitor) => (
-                  <div key={competitor.name} className="flex items-center justify-between rounded border border-[var(--border-muted)] p-3">
+                  <div key={competitor.id} className="flex items-center justify-between rounded border border-[var(--border-muted)] p-3">
                     <div>
-                      <p className="text-sm font-medium">{competitor.name}</p>
-                      <p className="text-xs text-[var(--text-muted)]">{competitor.signal}</p>
+                      <p className="text-sm font-medium">{competitor.comp_name}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{competitor.analysis_summary || competitor.website || "Manual watch target"}</p>
                     </div>
-                    <span className={`rounded px-2 py-1 text-xs ${competitor.risk === "high" ? "bg-[var(--red)] text-white" : competitor.risk === "med" ? "bg-[var(--amber)] text-black" : "bg-[var(--green)] text-black"}`}>
-                      {competitor.risk}
+                    <span className={`rounded px-2 py-1 text-xs ${competitor.risk_level === "high" ? "bg-[var(--red)] text-white" : competitor.risk_level === "med" ? "bg-[var(--amber)] text-black" : "bg-[var(--green)] text-black"}`}>
+                      {competitor.risk_level}
                     </span>
                   </div>
                 ))}
               </div>
             </section>
           </div>
+          <CompetitorForm companyId={companyId} />
           <section className="mt-5 rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.12em]">Intelligence Feed</h2>
             <div className="grid gap-3">
-              {feed.map((item) => (
-                <div key={item} className="border-l-2 border-[var(--amber)] pl-3 text-sm text-[var(--text-secondary)]">
-                  {item}
+              {reports.length === 0 && <p className="text-sm text-[var(--text-muted)]">No reports yet.</p>}
+              {reports.map((report) => (
+                <div key={report.id} className="border-l-2 border-[var(--amber)] pl-3 text-sm text-[var(--text-secondary)]">
+                  <span className="text-[var(--amber)]">{report.category}</span> — {report.summary}
                 </div>
               ))}
             </div>
