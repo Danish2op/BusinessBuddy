@@ -33,8 +33,8 @@ export function WebsiteIntelButton({ companyId }: { companyId?: string }) {
   return (
     <div className="flex flex-col items-start gap-2">
       <button
-        className="inline-flex items-center gap-2 rounded-md border border-[var(--border-muted)] bg-[#080c0f] px-3 py-2 text-sm text-[var(--text-secondary)] disabled:opacity-60"
-        disabled={pending}
+        className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--border-muted)] bg-[#080c0f] px-3 py-2 text-sm text-[var(--text-secondary)] transition hover:border-[var(--amber)] disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={pending || !companyId}
         onClick={refresh}
         type="button"
         title="Fetch the company website and summarize it into the AI knowledge block"

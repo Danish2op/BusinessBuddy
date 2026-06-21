@@ -1,10 +1,11 @@
 "use client";
 
-import { MessageSquare, Send } from "lucide-react";
+import { Loader2, MessageSquare, Send } from "lucide-react";
 import { useState } from "react";
 
 type AdvisorChatProps = {
   companyId?: string;
+  embedded?: boolean;
 };
 
 type ChatMessage = {
@@ -13,7 +14,7 @@ type ChatMessage = {
   citations?: string[];
 };
 
-export function AdvisorChat({ companyId }: AdvisorChatProps) {
+export function AdvisorChat({ companyId, embedded = false }: AdvisorChatProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
@@ -69,60 +70,102 @@ export function AdvisorChat({ companyId }: AdvisorChatProps) {
     ]);
   }
 
+  const panel = (
+    <section
+      className={
+        embedded
+          ? "advisor-panel grid h-full min-h-[520px] rounded-md border border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(14,24,23,0.96),rgba(6,10,11,0.98))] shadow-[0_0_0_1px_rgba(225,179,74,0.08)]"
+          : "advisor-panel w-[min(92vw,420px)] rounded-md border border-[var(--border-strong)] bg-[var(--bg-panel)] p-4 shadow-2xl"
+      }
+    >
+      <div className={embedded ? "border-b border-[var(--border-muted)] p-4" : "mb-3 flex items-center justify-between"}>
+        <div className="flex items-center gap-2">
+          <MessageSquare size={18} className="text-[var(--amber)]" />
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em]">Strategic Advisor</h2>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Ask for positioning, response plans, or competitor-specific moves.
+            </p>
+          </div>
+        </div>
+        {!embedded && (
+          <button aria-label="Close advisor" className="mt-3 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" onClick={() => setOpen(false)}>
+            Close
+          </button>
+        )}
+      </div>
+      <div className={embedded ? "grid min-h-0 grid-rows-[1fr_auto] gap-3 p-4" : ""}>
+        <div className="max-h-[420px] min-h-[260px] overflow-y-auto rounded border border-[var(--border-muted)] bg-[#05090a] p-3 text-sm text-[var(--text-secondary)]">
+          {messages.length === 0 && (
+            <div className="grid h-full place-items-center text-center text-[var(--text-muted)]">
+              <div>
+                <p className="text-sm text-[var(--text-secondary)]">No advisor thread yet.</p>
+                <p className="mt-2 text-xs">Try: “How should we position against our strongest rival?”</p>
+              </div>
+            </div>
+          )}
+          {messages.map((item, index) => (
+            <div key={`${item.role}-${index}`} className={`mb-3 whitespace-pre-wrap rounded-md border p-3 last:mb-0 ${
+              item.role === "assistant"
+                ? "border-[rgba(214,166,64,0.22)] bg-[rgba(214,166,64,0.06)]"
+                : "border-[rgba(143,191,99,0.2)] bg-[rgba(143,191,99,0.05)]"
+            }`}>
+              <span className={item.role === "assistant" ? "text-[var(--amber)]" : "text-[var(--green)]"}>
+                {item.role === "assistant" ? "Advisor" : "You"}:
+              </span>{" "}
+              {item.content}
+              {item.role === "assistant" && item.citations && item.citations.length > 0 && (
+                <div className="mt-2 text-xs text-[var(--text-muted)]">
+                  Citations: {item.citations.join(", ")}
+                </div>
+              )}
+            </div>
+          ))}
+          {pending && (
+            <p className="inline-flex items-center gap-2 rounded border border-[var(--border-muted)] px-3 py-2 text-[var(--text-muted)]">
+              <Loader2 size={14} className="animate-spin" />
+              Advisor analyzing market context...
+            </p>
+          )}
+        </div>
+        {error && <p className="mt-3 text-sm text-[var(--red)]">{error}</p>}
+        <div className="mt-3 flex gap-2">
+          <input
+            aria-label="Advisor message"
+            className="min-w-0 flex-1 rounded-md border border-[var(--border-muted)] bg-[#05090a] px-3 py-3 text-sm outline-none transition focus:border-[var(--amber)]"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder={companyId ? "Ask the advisor..." : "Complete setup to enable advisor"}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void send();
+              }
+            }}
+          />
+          <button
+            aria-label="Send advisor message"
+            className="inline-flex min-w-12 items-center justify-center rounded-md bg-[var(--amber)] px-4 text-black transition hover:bg-[var(--amber-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!companyId || !message.trim() || pending}
+            onClick={() => void send()}
+            type="button"
+          >
+            {pending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+          </button>
+        </div>
+        {!companyId && <p className="mt-2 text-xs text-[var(--text-muted)]">Complete setup to enable advisor chat.</p>}
+      </div>
+    </section>
+  );
+
+  if (embedded) {
+    return panel;
+  }
+
   return (
     <div className="fixed bottom-5 right-5 z-20">
       {open ? (
-        <section className="w-[min(92vw,420px)] rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-4 shadow-2xl">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Strategic Advisor</h2>
-            <button aria-label="Close advisor" className="text-[var(--text-muted)]" onClick={() => setOpen(false)}>
-              Close
-            </button>
-          </div>
-          <div className="mb-3 max-h-80 overflow-y-auto rounded border border-[var(--border-muted)] bg-[#080c0f] p-3 text-sm text-[var(--text-secondary)]">
-            {messages.length === 0 && "Ask for aggressive, defensive, or pivot responses to latest moves."}
-            {messages.map((item, index) => (
-              <div key={`${item.role}-${index}`} className="mb-3 whitespace-pre-wrap last:mb-0">
-                <span className={item.role === "assistant" ? "text-[var(--amber)]" : "text-[var(--green)]"}>
-                  {item.role === "assistant" ? "Advisor" : "You"}:
-                </span>{" "}
-                {item.content}
-                {item.role === "assistant" && item.citations && item.citations.length > 0 && (
-                  <div className="mt-2 text-xs text-[var(--text-muted)]">
-                    Citations: {item.citations.join(", ")}
-                  </div>
-                )}
-              </div>
-            ))}
-            {pending && <p className="text-[var(--text-muted)]">Advisor thinking...</p>}
-          </div>
-          {error && <p className="mb-3 text-sm text-[var(--red)]">{error}</p>}
-          <div className="flex gap-2">
-            <input
-              aria-label="Advisor message"
-              className="min-w-0 flex-1 rounded-md border border-[var(--border-muted)] bg-[#080c0f] px-3 py-2 text-sm"
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="How should we respond?"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void send();
-                }
-              }}
-            />
-            <button
-              aria-label="Send advisor message"
-              className="rounded-md bg-[var(--amber)] p-2 text-black disabled:opacity-50"
-              disabled={!companyId || !message.trim() || pending}
-              onClick={() => void send()}
-              type="button"
-            >
-              <Send size={18} />
-            </button>
-          </div>
-          {!companyId && <p className="mt-2 text-xs text-[var(--text-muted)]">Complete setup to enable advisor chat.</p>}
-        </section>
+        panel
       ) : (
         <button
           aria-label="Open strategic advisor"

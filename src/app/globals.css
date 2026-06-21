@@ -5,12 +5,14 @@
 :root {
   color-scheme: dark;
   --bg-base: #05080a;
-  --bg-panel: #0d1417;
+  --bg-panel: rgba(13, 20, 23, 0.92);
   --border-muted: #243138;
+  --border-strong: #31434a;
   --text-primary: #f2f5ed;
   --text-secondary: #c3ccc2;
   --text-muted: #79867f;
   --amber: #d6a640;
+  --amber-strong: #e1b34a;
   --green: #8fbf63;
   --olive: #536b3f;
   --red: #b84a45;
@@ -23,4 +25,19 @@
 body {
   margin: 0;
   background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, "Aptos", "Segoe UI", sans-serif;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }

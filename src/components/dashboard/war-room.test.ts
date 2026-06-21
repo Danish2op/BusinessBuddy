@@ -15,4 +15,18 @@ describe("WarRoom source", () => {
   it("does not render placeholder href navigation links", () => {
     expect(source).not.toContain('href="#"');
   });
+
+  it("does not render fake static sidebar navigation labels", () => {
+    expect(source).not.toContain("Intelligence\", \"Competitors\", \"Strategy\", \"Risks\", \"Settings");
+  });
+
+  it("embeds the strategic advisor in the dashboard work surface", () => {
+    expect(source).toContain("advisor-panel");
+    expect(source).toContain("<AdvisorChat");
+  });
+
+  it("labels risk as status instead of rendering a clickable-looking text pill", () => {
+    expect(source).toContain("Risk:");
+    expect(source).not.toContain("{competitor.risk_level}</span>");
+  });
 });
