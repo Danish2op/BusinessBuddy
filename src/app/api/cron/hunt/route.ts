@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data: companies, error: companiesError } = await supabase
     .from("companies")
-    .select("id,name,moat_description,ai_generated_profile,competitors(id,comp_name,website)")
+    .select("id,name,user_id,moat_description,ai_generated_profile,competitors(id,comp_name,website)")
     .limit(25);
 
   if (companiesError) {
@@ -39,7 +39,26 @@ export async function GET(request: Request) {
     return profile?.monitoring_enabled === true;
   });
 
+  const ownerIds = Array.from(new Set(monitoredCompanies.map((company) => company.user_id).filter(Boolean)));
+  const { data: profiles, error: profilesError } =
+    ownerIds.length > 0
+      ? await supabase.from("profiles").select("id,email").in("id", ownerIds)
+      : { data: [], error: null };
+
+  if (profilesError) {
+    return NextResponse.json(
+      {
+        error: "Could not load alert recipients.",
+        detail: profilesError.message
+      },
+      { status: 500 }
+    );
+  }
+
+  const emailByOwnerId = new Map((profiles ?? []).map((profile) => [profile.id, profile.email]));
+
   for (const company of monitoredCompanies) {
+    const ownerEmail = emailByOwnerId.get(company.user_id)?.trim();
     const result = await runContinuousHunt(
       {
         company,
@@ -50,11 +69,20 @@ export async function GET(request: Request) {
         tavily,
         resend: {
           sendAlert: (payload) =>
-            resend.sendEmail({
-              to: "alerts@danis.live",
-              subject: payload.subject,
-              text: payload.text
-            })
+            ownerEmail
+              ? resend.sendEmail({
+                  to: ownerEmail,
+                  subject: payload.subject,
+                  text: payload.text
+                })
+              : Promise.resolve({
+                  ok: false,
+                  error: {
+                    code: "missing_alert_recipient",
+                    message: "Company owner profile has no email address.",
+                    retryable: false
+                  }
+                })
         }
       }
     );
