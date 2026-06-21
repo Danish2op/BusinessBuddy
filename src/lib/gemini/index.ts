@@ -14,6 +14,7 @@ export type GeminiClientOptions = {
   env?: EnvSource;
   fetcher?: Fetcher;
   model?: string;
+  modelFallbacks?: string[];
 };
 
 export type GeminiGenerateOptions = {
@@ -36,7 +37,12 @@ type GeminiResponse = {
   };
 };
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL_FALLBACKS = [
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash"
+];
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function resolveApiKey(options: GeminiClientOptions): string {
@@ -50,69 +56,117 @@ function extractText(payload: GeminiResponse): string | undefined {
     .join("");
 }
 
+function parseModelFallbacks(value: string | undefined): string[] {
+  return value?.split(",").map((model) => model.trim()).filter(Boolean) ?? [];
+}
+
+function uniqueModels(models: string[]): string[] {
+  return Array.from(new Set(models.filter(Boolean)));
+}
+
+function resolveModelFallbacks(options: GeminiClientOptions): string[] {
+  if (options.model) {
+    return [options.model];
+  }
+
+  return uniqueModels([
+    ...(options.modelFallbacks ?? []),
+    ...parseModelFallbacks(options.env?.GEMINI_MODEL_FALLBACKS),
+    ...parseModelFallbacks(process.env.GEMINI_MODEL_FALLBACKS),
+    ...DEFAULT_MODEL_FALLBACKS
+  ]);
+}
+
+function shouldTryNextModel(status: number): boolean {
+  return status === 403 || status === 404 || status === 429 || status >= 500;
+}
+
 export function createGeminiClient(options: GeminiClientOptions = {}) {
   const apiKey = resolveApiKey(options);
   const fetcher = options.fetcher ?? fetch;
-  const model = options.model ?? DEFAULT_MODEL;
+  const modelFallbacks = resolveModelFallbacks(options);
 
   async function generateText(
     prompt: string,
     generationOptions: GeminiGenerateOptions = {}
   ): Promise<ServiceResult<string>> {
-    try {
-      const response = await fetcher(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: prompt }]
+    let lastFailure: ServiceResult<string> | null = null;
+
+    for (const model of modelFallbacks) {
+      let response: Response;
+
+      try {
+        response = await fetcher(`${GEMINI_ENDPOINT}/${model}:generateContent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: prompt }]
+              }
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: generationOptions.temperature ?? 0.2,
+              maxOutputTokens: generationOptions.maxOutputTokens
             }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: generationOptions.temperature ?? 0.2,
-            maxOutputTokens: generationOptions.maxOutputTokens
-          }
-        })
-      });
+          })
+        });
+      } catch {
+        lastFailure = serviceFailure({
+          code: "gemini_network_error",
+          message: "Gemini request could not be completed.",
+          provider: "gemini",
+          retryable: true
+        });
+
+        continue;
+      }
 
       const payload = (await response.json().catch(() => ({}))) as GeminiResponse;
 
       if (!response.ok) {
-        return serviceFailure({
+        lastFailure = serviceFailure({
           code: "gemini_request_failed",
           message: payload.error?.message ?? "Gemini request failed.",
           provider: "gemini",
           status: response.status,
           retryable: response.status >= 500 || response.status === 429
         });
+
+        if (shouldTryNextModel(response.status)) {
+          continue;
+        }
+
+        return lastFailure;
       }
 
       const text = extractText(payload);
       if (!text) {
-        return serviceFailure({
+        lastFailure = serviceFailure({
           code: "gemini_empty_response",
           message: "Gemini returned no text content.",
           provider: "gemini",
           status: response.status,
           retryable: true
         });
+
+        continue;
       }
 
       return serviceSuccess(text);
-    } catch {
-      return serviceFailure({
+    }
+
+    return lastFailure ?? serviceFailure({
         code: "gemini_network_error",
         message: "Gemini request could not be completed.",
         provider: "gemini",
         retryable: true
       });
-    }
   }
 
   async function generateJson<T = unknown>(
