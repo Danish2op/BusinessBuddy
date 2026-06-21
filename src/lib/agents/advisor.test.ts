@@ -73,6 +73,34 @@ describe("answerAdvisorQuestion", () => {
     });
   });
 
+  it("accepts partial advisor option objects from the model", async () => {
+    const result = await answerAdvisorQuestion("What should we do?", context, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          _nextPrompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> =>
+          serviceSuccess(
+            schema.parse({
+              answer: "Focus the response on trust and onboarding.",
+              options: {
+                defensive: "Publish a value comparison for your current segment."
+              },
+              citations: []
+            })
+          )
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected advisor answer.");
+    }
+    expect(result.data.options.aggressive).toBe("");
+    expect(result.data.options.defensive).toContain("value comparison");
+    expect(result.data.options.pivot).toBe("");
+  });
+
   it("returns controlled provider failures", async () => {
     const result = await answerAdvisorQuestion("What changed?", context, {
       gemini: {

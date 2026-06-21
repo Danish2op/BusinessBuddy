@@ -7,11 +7,17 @@ import { serviceFailure } from "./types";
 
 export const AdvisorAnswerSchema = z.object({
   answer: z.string(),
-  options: z.object({
-    aggressive: z.string(),
-    defensive: z.string(),
-    pivot: z.string()
-  }),
+  options: z
+    .object({
+      aggressive: z.string().optional().default(""),
+      defensive: z.string().optional().default(""),
+      pivot: z.string().optional().default("")
+    })
+    .default({
+      aggressive: "",
+      defensive: "",
+      pivot: ""
+    }),
   citations: z.array(z.string()).default([])
 });
 

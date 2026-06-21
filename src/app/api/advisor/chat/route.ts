@@ -51,12 +51,6 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  await supabase.from("advisor_messages").insert({
-    company_id: payload.companyId,
-    role: "user",
-    content: payload.message
-  });
-
   const answer = await answerAdvisorQuestion(payload.message, {
     company,
     reports: reports ?? []
@@ -67,6 +61,12 @@ export async function POST(request: Request) {
   if (!answer.ok) {
     return NextResponse.json({ error: answer.error.message, code: answer.error.code }, { status: 400 });
   }
+
+  await supabase.from("advisor_messages").insert({
+    company_id: payload.companyId,
+    role: "user",
+    content: payload.message
+  });
 
   await supabase.from("advisor_messages").insert({
     company_id: payload.companyId,
