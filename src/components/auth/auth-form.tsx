@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { getClientEnv } from "@/lib/env";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function AuthForm() {
@@ -19,7 +18,7 @@ export function AuthForm() {
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const supabase = createSupabaseBrowserClient();
-    const env = getClientEnv();
+    const appOrigin = window.location.origin;
     const result =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email, password })
@@ -27,7 +26,7 @@ export function AuthForm() {
             email,
             password,
             options: {
-              emailRedirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`
+              emailRedirectTo: `${appOrigin}/auth/callback`
             }
           });
 

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { getClientEnv, getServerEnv } from "./env";
 
@@ -48,5 +50,16 @@ describe("env validation", () => {
 
   it("valid env parses", () => {
     expect(getServerEnv(validEnv)).toMatchObject(validEnv);
+  });
+
+  it("keeps dynamic env parsing out of browser-bundled modules", () => {
+    const projectRoot = join(__dirname, "../..");
+    const browserClient = readFileSync(join(projectRoot, "src/lib/supabase/browser.ts"), "utf8");
+    const authForm = readFileSync(join(projectRoot, "src/components/auth/auth-form.tsx"), "utf8");
+
+    expect(browserClient).not.toContain("@/lib/env");
+    expect(browserClient).not.toContain("getClientEnv");
+    expect(authForm).not.toContain("@/lib/env");
+    expect(authForm).not.toContain("getClientEnv");
   });
 });
