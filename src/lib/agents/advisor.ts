@@ -31,7 +31,7 @@ function normalizeAdvisorAnswer(value: unknown) {
     record.analysis
   ) ?? (aggressive || defensive || pivot
     ? "Here are strategic response options based on your current company and competitor context."
-    : undefined);
+    : "The current evidence is limited, so treat this as a starting point: clarify your strongest customer segment, compare against accepted competitors, and prioritize one measurable positioning move before spending on broad campaigns.");
 
   return {
     answer,

@@ -129,6 +129,29 @@ describe("answerAdvisorQuestion", () => {
     expect(result.data.citations).toEqual(["report-1"]);
   });
 
+  it("returns a controlled fallback when the model omits advisor text fields", async () => {
+    const result = await answerAdvisorQuestion("What should we do?", context, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          _nextPrompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> =>
+          serviceSuccess(
+            schema.parse({
+              notes: [],
+              citations: []
+            })
+          )
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected fallback advisor answer.");
+    }
+    expect(result.data.answer).toContain("evidence is limited");
+  });
+
   it("returns controlled provider failures", async () => {
     const result = await answerAdvisorQuestion("What changed?", context, {
       gemini: {
