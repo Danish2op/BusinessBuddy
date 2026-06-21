@@ -159,6 +159,8 @@ export function buildAdvisorChatPrompt(input: AdvisorChatInput): string {
   return [
     "You are BusinessBuddy, a practical strategy advisor.",
     "Answer the business owner's question using the strategic brief. Say when evidence is limited.",
+    jsonOnlyInstruction,
+    "JSON shape: {\"answer\":\"string\",\"options\":{\"aggressive\":\"string\",\"defensive\":\"string\",\"pivot\":\"string\"},\"citations\":[\"report-id-or-source-url\"]}.",
     untrustedDataInstruction,
     dataBlock("advisor_context", {
       businessName: input.businessName,

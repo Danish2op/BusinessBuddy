@@ -5,21 +5,63 @@ import { buildAdvisorChatPrompt } from "@/lib/gemini/prompts";
 import type { ServiceResult } from "./types";
 import { serviceFailure } from "./types";
 
-export const AdvisorAnswerSchema = z.object({
-  answer: z.string(),
-  options: z
-    .object({
-      aggressive: z.string().optional().default(""),
-      defensive: z.string().optional().default(""),
-      pivot: z.string().optional().default("")
-    })
-    .default({
-      aggressive: "",
-      defensive: "",
-      pivot: ""
-    }),
-  citations: z.array(z.string()).default([])
-});
+function firstString(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
+function normalizeAdvisorAnswer(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  const nestedOptions = record.options && typeof record.options === "object" && !Array.isArray(record.options)
+    ? record.options as Record<string, unknown>
+    : {};
+
+  const aggressive = firstString(nestedOptions.aggressive, record.aggressive, record.aggressive_option);
+  const defensive = firstString(nestedOptions.defensive, record.defensive, record.defensive_option);
+  const pivot = firstString(nestedOptions.pivot, record.pivot, record.pivot_option);
+  const answer = firstString(
+    record.answer,
+    record.response,
+    record.summary,
+    record.recommendation,
+    record.advice,
+    record.analysis
+  ) ?? (aggressive || defensive || pivot
+    ? "Here are strategic response options based on your current company and competitor context."
+    : undefined);
+
+  return {
+    answer,
+    options: {
+      aggressive,
+      defensive,
+      pivot
+    },
+    citations: record.citations
+  };
+}
+
+export const AdvisorAnswerSchema = z.preprocess(
+  normalizeAdvisorAnswer,
+  z.object({
+    answer: z.string().min(1),
+    options: z
+      .object({
+        aggressive: z.string().optional().default(""),
+        defensive: z.string().optional().default(""),
+        pivot: z.string().optional().default("")
+      })
+      .default({
+        aggressive: "",
+        defensive: "",
+        pivot: ""
+      }),
+    citations: z.array(z.string()).default([])
+  })
+);
 
 export type AdvisorAnswer = z.infer<typeof AdvisorAnswerSchema>;
 

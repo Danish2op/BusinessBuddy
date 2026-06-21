@@ -101,6 +101,34 @@ describe("answerAdvisorQuestion", () => {
     expect(result.data.options.pivot).toBe("");
   });
 
+  it("normalizes common advisor response aliases from the model", async () => {
+    const result = await answerAdvisorQuestion("What should we do?", context, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          _nextPrompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> =>
+          serviceSuccess(
+            schema.parse({
+              response: "Do not race to the bottom. Reframe around proof and trust.",
+              aggressive: "Ship a direct comparison page.",
+              defensive: "Add stronger onboarding proof to pricing pages.",
+              pivot: "Lean into regulated teams that value reliability.",
+              citations: ["report-1"]
+            })
+          )
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected normalized advisor answer.");
+    }
+    expect(result.data.answer).toContain("proof and trust");
+    expect(result.data.options.aggressive).toContain("comparison");
+    expect(result.data.citations).toEqual(["report-1"]);
+  });
+
   it("returns controlled provider failures", async () => {
     const result = await answerAdvisorQuestion("What changed?", context, {
       gemini: {
