@@ -291,6 +291,55 @@ describe("runOnboardingMapping", () => {
     expect(identityPrompt).toContain("$99/mo");
   });
 
+  it("keeps setup usable when competitor extraction returns malformed model output", async () => {
+    let geminiCalls = 0;
+    const result = await runOnboardingMapping(validInput, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          _prompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> => {
+          geminiCalls += 1;
+          if (geminiCalls === 1) {
+            return serviceSuccess(
+              schema.parse({
+                positioning: "AI strategic intelligence for SaaS operators",
+                customers: ["Founder-led SaaS teams"],
+                offerings: ["Competitor monitoring"],
+                keywords: ["competitive intelligence"]
+              })
+            );
+          }
+
+          return {
+            ok: false,
+            error: {
+              code: "invalid_json",
+              message: "Model response was not valid JSON."
+            }
+          };
+        }
+      },
+      tavily: {
+        search: async () =>
+          serviceSuccess([
+            {
+              title: "Best trading platforms 2026",
+              url: "https://example.com/best-trading-platforms",
+              domain: "example.com",
+              content: "Listicle"
+            }
+          ])
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.data.competitor_suggestions).toEqual([]);
+  });
+
   it("returns a controlled validation failure for invalid onboarding input", async () => {
     const result = await runOnboardingMapping(
       {

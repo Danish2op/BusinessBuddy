@@ -269,11 +269,7 @@ export async function runOnboardingMapping(
     { maxOutputTokens: 3500 }
   );
 
-  if (!extracted.ok) {
-    return extracted;
-  }
-
-  const extractedCandidates = dedupeExtractedCompanies(extracted.data.competitors).slice(0, 8);
+  const extractedCandidates = extracted.ok ? dedupeExtractedCompanies(extracted.data.competitors).slice(0, 8) : [];
   const enriched = await Promise.all(extractedCandidates.map((candidate) => enrichExtractedCompetitor(candidate, dependencies.tavily)));
   const competitorSuggestions = enriched.filter((competitor): competitor is CompetitorRecord => Boolean(competitor)).slice(0, 8);
 
