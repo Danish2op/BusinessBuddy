@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 
 import { runOnboardingMapping } from "@/lib/agents/onboarding";
 import { createGeminiClient } from "@/lib/gemini";
+import { rejectDisallowedOrigin } from "@/lib/security/route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createTavilyClient } from "@/lib/tavily";
 
 export async function POST(request: Request) {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) {
+    return blocked;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }
@@ -33,12 +39,22 @@ export async function POST(request: Request) {
     moat_description: mapped.data.company.moat_description,
     team_details: mapped.data.company.team_details,
     industry: mapped.data.company.industry,
+    niche: mapped.data.company.niche,
+    motive: mapped.data.company.motive,
+    target_age_min: mapped.data.company.target_age_min,
+    target_age_max: mapped.data.company.target_age_max,
+    target_gender: mapped.data.company.target_gender,
+    target_countries: mapped.data.company.target_countries,
+    target_keywords: mapped.data.company.target_keywords,
+    business_costing: mapped.data.company.business_costing,
+    setup_status: "suggestions_ready",
+    monitoring_enabled: false,
     ai_generated_profile: mapped.data.ai_generated_profile
   };
 
   const { data: company, error: companyError } = await supabase
     .from("companies")
-    .insert(companyInsert)
+    .upsert(companyInsert, { onConflict: "user_id" })
     .select("id")
     .single();
 
@@ -46,22 +62,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save company profile." }, { status: 500 });
   }
 
-  if (mapped.data.competitors.length > 0) {
-    const { error: competitorError } = await supabase.from("competitors").insert(
-      mapped.data.competitors.map((competitor) => ({
+  if (mapped.data.competitor_suggestions.length > 0) {
+    const { error: competitorError } = await supabase.from("competitor_suggestions").upsert(
+      mapped.data.competitor_suggestions.map((competitor) => ({
         company_id: company.id,
         ...competitor
-      }))
+      })),
+      { onConflict: "company_id,website_domain" }
     );
 
     if (competitorError) {
-      return NextResponse.json({ error: "Could not save competitors." }, { status: 500 });
+      return NextResponse.json({ error: "Could not save competitor suggestions." }, { status: 500 });
     }
   }
 
   return NextResponse.json({
     companyId: company.id,
     aiGeneratedProfile: mapped.data.ai_generated_profile,
-    competitors: mapped.data.competitors
+    competitorSuggestions: mapped.data.competitor_suggestions
   });
 }

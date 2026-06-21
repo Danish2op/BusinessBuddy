@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { getClientEnv } from "@/lib/env";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function AuthForm() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
+  const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
   const router = useRouter();
 
@@ -17,10 +19,17 @@ export function AuthForm() {
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const supabase = createSupabaseBrowserClient();
+    const env = getClientEnv();
     const result =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+        : await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`
+            }
+          });
 
     setPending(false);
 
@@ -29,8 +38,30 @@ export function AuthForm() {
       return;
     }
 
+    if (mode === "signup" && !result.data.session) {
+      setCheckEmail(true);
+      setMessage(`Check ${email} to verify your account.`);
+      return;
+    }
+
     router.push(mode === "login" ? "/dashboard" : "/setup");
     router.refresh();
+  }
+
+  if (checkEmail) {
+    return (
+      <div className="rounded-md border border-[var(--border-muted)] bg-[var(--bg-panel)] p-6">
+        <p className="text-xs uppercase tracking-[0.18em] text-[var(--amber)]">Verify email</p>
+        <h2 className="mt-3 text-xl font-semibold">Open verification link</h2>
+        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+          We sent your Supabase confirmation email. After verification, BusinessBuddy will continue setup.
+        </p>
+        {message && <p className="mt-4 text-sm text-[var(--green)]">{message}</p>}
+        <button className="mt-5 rounded-md border border-[var(--border-muted)] px-4 py-2 text-sm" onClick={() => setCheckEmail(false)} type="button">
+          Back to login
+        </button>
+      </div>
+    );
   }
 
   return (

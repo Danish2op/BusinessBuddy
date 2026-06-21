@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractSameOriginLinks, fetchCompanyWebsiteText, htmlToText } from "@/lib/scrape";
+import { extractSameOriginLinks, fetchCompanyWebsiteText, htmlToText, isSafeScrapeUrl } from "@/lib/scrape";
 
 describe("website scraping helpers", () => {
   it("converts html to compact text", () => {
@@ -41,5 +41,45 @@ describe("website scraping helpers", () => {
     expect(result?.pagesFetched).toBe(2);
     expect(result?.text).toContain("Home page");
     expect(result?.text).toContain("Pricing page");
+  });
+
+  it("blocks local, private, and metadata urls before fetching", async () => {
+    expect(isSafeScrapeUrl("https://example.com")).toBe(true);
+    expect(isSafeScrapeUrl("http://localhost:3000")).toBe(false);
+    expect(isSafeScrapeUrl("http://127.0.0.1")).toBe(false);
+    expect(isSafeScrapeUrl("http://10.0.0.2")).toBe(false);
+    expect(isSafeScrapeUrl("http://172.16.0.10")).toBe(false);
+    expect(isSafeScrapeUrl("http://192.168.1.10")).toBe(false);
+    expect(isSafeScrapeUrl("http://169.254.169.254/latest/meta-data")).toBe(false);
+
+    let fetched = false;
+    const result = await fetchCompanyWebsiteText("http://127.0.0.1", {
+      fetcher: async () => {
+        fetched = true;
+        return new Response("<main>local</main>");
+      }
+    });
+
+    expect(result).toBeNull();
+    expect(fetched).toBe(false);
+  });
+
+  it("blocks redirects to unsafe urls", async () => {
+    const seen: string[] = [];
+    const result = await fetchCompanyWebsiteText("https://example.com/", {
+      fetcher: async (url, init) => {
+        seen.push(String(url));
+        if (init?.redirect === "follow") {
+          return new Response("<main>unsafe local content</main>");
+        }
+        return new Response("", {
+          status: 302,
+          headers: { location: "http://127.0.0.1/admin" }
+        });
+      }
+    });
+
+    expect(result).toBeNull();
+    expect(seen).toEqual(["https://example.com/"]);
   });
 });

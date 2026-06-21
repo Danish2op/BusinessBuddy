@@ -11,11 +11,19 @@ const validInput = {
   linkedin_url: "https://linkedin.com/company/businessbuddy",
   moat_description: "AI competitive intelligence for founder-led SaaS teams.",
   team_details: "Small product team focused on strategy workflows.",
-  industry: "SaaS"
+  industry: "SaaS",
+  niche: "Founder-led SaaS strategy",
+  motive: "Help small SaaS teams outmaneuver incumbents.",
+  target_age_min: 25,
+  target_age_max: 54,
+  target_gender: "all",
+  target_countries: ["US", "Canada"],
+  target_keywords: ["competitive intelligence", "SaaS"],
+  business_costing: "$99/mo"
 };
 
 describe("runOnboardingMapping", () => {
-  it("passes fallback competitor queries to Tavily and returns top five competitors", async () => {
+  it("passes fallback competitor queries to Tavily and returns draft competitor suggestions", async () => {
     const searchCalls: unknown[] = [];
     const tavilyResults = Array.from({ length: 6 }, (_, index): NormalizedTavilyResult => ({
       title: `Competitor ${index + 1}`,
@@ -59,10 +67,12 @@ describe("runOnboardingMapping", () => {
         expect.stringContaining("competitive intelligence SaaS competitors")
       ])
     });
-    expect(result.data.competitors).toHaveLength(5);
-    expect(result.data.competitors[0]).toMatchObject({
+    expect(result.data.competitor_suggestions).toHaveLength(6);
+    expect(result.data.competitor_suggestions[0]).toMatchObject({
       comp_name: "Competitor 1",
       website: "https://competitor1.com",
+      website_domain: "competitor1.com",
+      source_type: "ai",
       risk_level: "med"
     });
   });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { createGeminiClient } from "@/lib/gemini";
 import { fetchCompanyWebsiteText } from "@/lib/scrape";
+import { rejectDisallowedOrigin } from "@/lib/security/route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeOptionalHttpUrl } from "@/lib/url";
 
@@ -15,6 +16,11 @@ const KnowledgeSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) {
+    return blocked;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }

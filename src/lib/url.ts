@@ -16,3 +16,15 @@ export function normalizeOptionalHttpUrl(value: unknown) {
     return null;
   }
 }
+
+export function domainFromHttpUrl(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}

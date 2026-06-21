@@ -14,7 +14,6 @@ export function MonitoringToggle({ companyId, initialEnabled = false }: Monitori
 
   async function toggle() {
     if (!companyId) {
-      setEnabled((value) => !value);
       return;
     }
 
@@ -39,13 +38,13 @@ export function MonitoringToggle({ companyId, initialEnabled = false }: Monitori
           ? "border-[var(--amber)] bg-[rgba(214,166,64,0.12)] text-[var(--amber)]"
           : "border-[var(--border-muted)] bg-[#080c0f] text-[var(--text-secondary)]"
       }`}
-      disabled={pending}
+      disabled={pending || !companyId}
       onClick={toggle}
       type="button"
       title="Turn background competitor monitoring on or off"
     >
       {enabled ? <Pause size={16} /> : <Play size={16} />}
-      {enabled ? "Monitoring on" : "Monitoring paused"}
+      {!companyId ? "Setup required" : enabled ? "Monitoring on" : "Monitoring paused"}
     </button>
   );
 }

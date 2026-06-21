@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeOptionalHttpUrl } from "@/lib/url";
+import { domainFromHttpUrl, normalizeOptionalHttpUrl } from "@/lib/url";
 
 describe("normalizeOptionalHttpUrl", () => {
   it("normalizes domains without a scheme", () => {
@@ -16,5 +16,10 @@ describe("normalizeOptionalHttpUrl", () => {
     expect(normalizeOptionalHttpUrl("javascript:alert(1)")).toBeNull();
     expect(normalizeOptionalHttpUrl("localhost")).toBeNull();
     expect(normalizeOptionalHttpUrl("")).toBeNull();
+  });
+
+  it("extracts normalized domains", () => {
+    expect(domainFromHttpUrl("https://www.example.com/path")).toBe("example.com");
+    expect(domainFromHttpUrl("not a url")).toBeNull();
   });
 });

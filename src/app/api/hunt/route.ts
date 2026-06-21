@@ -3,10 +3,17 @@ import { NextResponse } from "next/server";
 import { runContinuousHunt } from "@/lib/agents/hunt";
 import { createGeminiClient } from "@/lib/gemini";
 import { createResendClient } from "@/lib/resend";
+import { rejectDisallowedOrigin } from "@/lib/security/route";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createTavilyClient } from "@/lib/tavily";
 
 export async function POST(request: Request) {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) {
+    return blocked;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }
@@ -23,8 +30,9 @@ export async function POST(request: Request) {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,name,moat_description,competitors(id,comp_name,website)")
+    .select("id,name,user_id,moat_description,competitors(id,comp_name,website)")
     .eq("id", payload.companyId)
+    .eq("user_id", user.id)
     .single();
 
   if (!company) {
@@ -56,9 +64,17 @@ export async function POST(request: Request) {
   }
 
   if (result.data.reports.length > 0) {
-    await supabase.from("intelligence_reports").insert(
-      result.data.reports.map(({ risk_level: _riskLevel, ...report }) => report)
-    );
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin
+      .from("intelligence_reports")
+      .upsert(
+        result.data.reports.map(({ should_alert: _shouldAlert, alert_subject: _alertSubject, alert_body: _alertBody, ...report }) => report),
+        { onConflict: "company_id,signal_hash", ignoreDuplicates: true }
+      );
+
+    if (error) {
+      return NextResponse.json({ error: "Could not save intelligence reports." }, { status: 500 });
+    }
   }
 
   return NextResponse.json(result.data);

@@ -83,7 +83,10 @@ describe("Supabase schema", () => {
     const profiles = normalizeSql(tableBlock(schema, "profiles"));
     const companies = normalizeSql(tableBlock(schema, "companies"));
     const competitors = normalizeSql(tableBlock(schema, "competitors"));
+    const suggestions = normalizeSql(tableBlock(schema, "competitor_suggestions"));
     const reports = normalizeSql(tableBlock(schema, "intelligence_reports"));
+    const advisorMessages = normalizeSql(tableBlock(schema, "advisor_messages"));
+    const agentRuns = normalizeSql(tableBlock(schema, "agent_runs"));
 
     expect(profiles).toContain("id uuid primary key references auth.users(id) on delete cascade");
     expect(profiles).toContain("email text");
@@ -97,6 +100,16 @@ describe("Supabase schema", () => {
     expect(companies).toContain("moat_description text");
     expect(companies).toContain("team_details text");
     expect(companies).toContain("industry text");
+    expect(companies).toContain("niche text");
+    expect(companies).toContain("motive text");
+    expect(companies).toContain("target_age_min integer");
+    expect(companies).toContain("target_age_max integer");
+    expect(companies).toContain("target_gender text");
+    expect(companies).toContain("target_countries text[]");
+    expect(companies).toContain("target_keywords text[]");
+    expect(companies).toContain("business_costing text");
+    expect(companies).toContain("setup_status text");
+    expect(companies).toContain("monitoring_enabled boolean not null default false");
     expect(companies).toContain("ai_generated_profile jsonb");
     expect(columnNames(tableBlock(schema, "companies"))).toEqual([
       "id",
@@ -107,40 +120,84 @@ describe("Supabase schema", () => {
       "moat_description",
       "team_details",
       "industry",
+      "niche",
+      "motive",
+      "target_age_min",
+      "target_age_max",
+      "target_gender",
+      "target_countries",
+      "target_keywords",
+      "business_costing",
+      "setup_status",
+      "monitoring_enabled",
       "ai_generated_profile"
     ]);
 
     expect(competitors).toContain("company_id uuid not null references public.companies(id) on delete cascade");
     expect(competitors).toContain("comp_name text not null");
     expect(competitors).toContain("website text");
+    expect(competitors).toContain("linkedin_url text");
+    expect(competitors).toContain("website_domain text");
+    expect(competitors).toContain("source_type text");
+    expect(competitors).toContain("knowledge_block jsonb");
     expect(competitors).toContain("analysis_summary text");
     expect(competitors).toContain("risk_level text");
+    expect(competitors).toContain("created_at timestamptz default now()");
     expect(competitors).toContain("last_scanned timestamptz");
     expect(columnNames(tableBlock(schema, "competitors"))).toEqual([
       "id",
       "company_id",
       "comp_name",
       "website",
+      "linkedin_url",
+      "website_domain",
+      "source_type",
+      "knowledge_block",
       "analysis_summary",
       "risk_level",
+      "created_at",
       "last_scanned"
     ]);
 
+    expect(suggestions).toContain("company_id uuid not null references public.companies(id) on delete cascade");
+    expect(suggestions).toContain("comp_name text not null");
+    expect(suggestions).toContain("linkedin_url text");
+    expect(suggestions).toContain("status text not null default 'draft'");
+    expect(suggestions).toContain("knowledge_block jsonb");
+    expect(suggestions).toContain("source_type text not null");
+
     expect(reports).toContain("competitor_id uuid not null");
     expect(reports).toContain("company_id uuid not null references public.companies(id) on delete cascade");
+    expect(reports).toContain("title text");
     expect(reports).toContain("summary text not null");
     expect(reports).toContain("source_url text");
+    expect(reports).toContain("source_title text");
     expect(reports).toContain("category text not null");
+    expect(reports).toContain("risk_level text");
+    expect(reports).toContain("signal_hash text not null");
+    expect(reports).toContain("email_sent_at timestamptz");
+    expect(reports).toContain("email_id text");
     expect(reports).toContain("created_at timestamptz default now()");
+
+    expect(advisorMessages).toContain("company_id uuid not null references public.companies(id) on delete cascade");
+    expect(advisorMessages).toContain("role text not null");
+    expect(advisorMessages).toContain("content text not null");
+    expect(agentRuns).toContain("company_id uuid references public.companies(id) on delete cascade");
+    expect(agentRuns).toContain("agent_type text not null");
+    expect(agentRuns).toContain("status text not null");
   });
 
   it("enforces allowed risk and report category values", () => {
     expect(normalizedSchema).toContain("risk_level in ('low', 'med', 'high')");
     expect(compactSql(schema)).toContain("category in ('Pricing', 'Product', 'Hiring', 'News')");
+    expect(compactSql(schema)).toContain("setup_status in ('draft', 'suggestions_ready', 'complete')");
+    expect(compactSql(schema)).toContain("status in ('draft', 'accepted', 'rejected')");
   });
 
   it("enforces report competitor and company consistency", () => {
     expect(normalizedSchema).toContain("unique (id, company_id)");
+    expect(normalizedSchema).toContain("unique (company_id, signal_hash)");
+    expect(normalizedSchema).toContain("unique (company_id, website_domain)");
     expect(normalizedSchema).toContain(
       "foreign key (competitor_id, company_id) references public.competitors(id, company_id)"
     );
@@ -149,12 +206,14 @@ describe("Supabase schema", () => {
   it("adds ownership and report feed indexes", () => {
     expect(normalizedSchema).toContain("create index companies_user_id_idx on public.companies(user_id)");
     expect(normalizedSchema).toContain("create index competitors_company_id_idx on public.competitors(company_id)");
+    expect(normalizedSchema).toContain("create index competitor_suggestions_company_id_status_idx on public.competitor_suggestions(company_id, status)");
     expect(normalizedSchema).toContain("create index intelligence_reports_company_id_created_at_idx on public.intelligence_reports(company_id, created_at desc)");
     expect(normalizedSchema).toContain("create index intelligence_reports_competitor_id_created_at_idx on public.intelligence_reports(competitor_id, created_at desc)");
+    expect(normalizedSchema).toContain("create index advisor_messages_company_id_created_at_idx on public.advisor_messages(company_id, created_at)");
   });
 
   it("enables row level security on every application table", () => {
-    for (const table of ["profiles", "companies", "competitors", "intelligence_reports"]) {
+    for (const table of ["profiles", "companies", "competitor_suggestions", "competitors", "intelligence_reports", "advisor_messages", "agent_runs"]) {
       expect(normalizedSchema).toContain(`alter table public.${table} enable row level security`);
     }
   });
@@ -177,6 +236,8 @@ describe("Supabase schema", () => {
 
     expect(policyBlock(schema, "Users can select reports for own companies")).toContain("for select to authenticated");
     expect(policyBlock(schema, "Users can select reports for own companies")).toContain("using (exists");
+    expect(policyBlock(schema, "Users can manage suggestions for own companies")).toContain("on public.competitor_suggestions");
+    expect(policyBlock(schema, "Users can manage advisor messages for own companies")).toContain("on public.advisor_messages");
   });
 
   it("does not grant authenticated users write access to intelligence reports", () => {
@@ -194,6 +255,15 @@ describe("Supabase schema", () => {
     expect(normalizedSchema).toContain("new.email");
     expect(normalizedSchema).toContain("after insert on auth.users");
     expect(normalizedSchema).toContain("execute function public.handle_new_user()");
+  });
+
+  it("defines atomic competitor finalization function", () => {
+    expect(normalizedSchema).toContain("create or replace function public.finalize_competitors");
+    expect(normalizedSchema).toContain("security definer");
+    expect(normalizedSchema).toContain("auth.uid()");
+    expect(normalizedSchema).toContain("insert into public.competitors");
+    expect(normalizedSchema).toContain("on conflict");
+    expect(normalizedSchema).toContain("setup_status = 'complete'");
   });
 });
 

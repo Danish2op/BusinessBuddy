@@ -14,14 +14,17 @@ export default async function DashboardPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,name,moat_description,ai_generated_profile,competitors(id,comp_name,website,analysis_summary,risk_level),intelligence_reports(id,summary,category,created_at)")
+    .select("id,name,moat_description,monitoring_enabled,setup_status,ai_generated_profile,competitors(id,comp_name,website,analysis_summary,risk_level),intelligence_reports(id,title,summary,category,risk_level,source_url,created_at)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
+  if (!company || company.setup_status !== "complete") {
+    redirect("/setup");
+  }
+
   const profile = company?.ai_generated_profile as
     | {
-        monitoring_enabled?: unknown;
         website_knowledge_block?: {
           summary?: string;
           offerings?: string[];
@@ -37,7 +40,7 @@ export default async function DashboardPage() {
       companyId={company?.id}
       companyName={company?.name}
       moatDescription={company?.moat_description}
-      monitoringEnabled={profile?.monitoring_enabled === true}
+      monitoringEnabled={company.monitoring_enabled === true}
       knowledgeBlock={profile?.website_knowledge_block}
       competitors={company?.competitors ?? []}
       reports={company?.intelligence_reports ?? []}

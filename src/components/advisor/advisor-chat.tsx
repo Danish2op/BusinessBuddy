@@ -3,9 +3,68 @@
 import { MessageSquare, Send } from "lucide-react";
 import { useState } from "react";
 
-export function AdvisorChat() {
+type AdvisorChatProps = {
+  companyId?: string;
+};
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export function AdvisorChat({ companyId }: AdvisorChatProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  async function send() {
+    if (!companyId || !message.trim() || pending) {
+      return;
+    }
+
+    const userMessage = message.trim();
+    setMessage("");
+    setError("");
+    setPending(true);
+    setMessages((current) => [...current, { role: "user", content: userMessage }]);
+
+    const response = await fetch("/api/advisor/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, message: userMessage })
+    });
+
+    setPending(false);
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          answer?: string;
+          options?: { aggressive?: string; defensive?: string; pivot?: string };
+          error?: string;
+        }
+      | null;
+
+    if (!response.ok || !payload?.answer) {
+      setError(payload?.error ?? "Advisor failed. Try again.");
+      return;
+    }
+
+    setMessages((current) => [
+      ...current,
+      {
+        role: "assistant",
+        content: [
+          payload.answer,
+          payload.options?.aggressive ? `Aggressive: ${payload.options.aggressive}` : "",
+          payload.options?.defensive ? `Defensive: ${payload.options.defensive}` : "",
+          payload.options?.pivot ? `Pivot: ${payload.options.pivot}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n\n")
+      }
+    ]);
+  }
 
   return (
     <div className="fixed bottom-5 right-5 z-20">
@@ -17,9 +76,19 @@ export function AdvisorChat() {
               Close
             </button>
           </div>
-          <div className="mb-3 rounded border border-[var(--border-muted)] bg-[#080c0f] p-3 text-sm text-[var(--text-secondary)]">
-            Ask for aggressive, defensive, or pivot responses to latest moves.
+          <div className="mb-3 max-h-80 overflow-y-auto rounded border border-[var(--border-muted)] bg-[#080c0f] p-3 text-sm text-[var(--text-secondary)]">
+            {messages.length === 0 && "Ask for aggressive, defensive, or pivot responses to latest moves."}
+            {messages.map((item, index) => (
+              <div key={`${item.role}-${index}`} className="mb-3 whitespace-pre-wrap last:mb-0">
+                <span className={item.role === "assistant" ? "text-[var(--amber)]" : "text-[var(--green)]"}>
+                  {item.role === "assistant" ? "Advisor" : "You"}:
+                </span>{" "}
+                {item.content}
+              </div>
+            ))}
+            {pending && <p className="text-[var(--text-muted)]">Advisor thinking...</p>}
           </div>
+          {error && <p className="mb-3 text-sm text-[var(--red)]">{error}</p>}
           <div className="flex gap-2">
             <input
               aria-label="Advisor message"
@@ -27,8 +96,20 @@ export function AdvisorChat() {
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               placeholder="How should we respond?"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void send();
+                }
+              }}
             />
-            <button aria-label="Send advisor message" className="rounded-md bg-[var(--amber)] p-2 text-black" type="button">
+            <button
+              aria-label="Send advisor message"
+              className="rounded-md bg-[var(--amber)] p-2 text-black disabled:opacity-50"
+              disabled={!companyId || !message.trim() || pending}
+              onClick={() => void send()}
+              type="button"
+            >
               <Send size={18} />
             </button>
           </div>

@@ -1,6 +1,28 @@
 import { SetupForm } from "@/components/setup/setup-form";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function SetupPage() {
+export default async function SetupPage() {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth");
+  }
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("id,setup_status,competitor_suggestions(id,comp_name,website,linkedin_url,analysis_summary,risk_level,status,source_type)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (company?.setup_status === "complete") {
+    redirect("/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg-base)] px-6 py-10 text-[var(--text-primary)]">
       <section className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -12,7 +34,10 @@ export default function SetupPage() {
             first competitor watchlist.
           </p>
         </div>
-        <SetupForm />
+        <SetupForm
+          initialCompanyId={company?.id}
+          initialSuggestions={company?.competitor_suggestions?.filter((suggestion) => suggestion.status === "draft") ?? []}
+        />
       </section>
     </main>
   );

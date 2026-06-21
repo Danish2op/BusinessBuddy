@@ -37,7 +37,7 @@ export type OnboardingMappingDependencies = {
 export type OnboardingMappingResult = {
   company: OnboardingInput;
   ai_generated_profile: StrategicIdentity;
-  competitors: CompetitorRecord[];
+  competitor_suggestions: CompetitorRecord[];
 };
 
 function competitorNameFromResult(result: NormalizedTavilyResult): string {
@@ -98,16 +98,24 @@ export async function runOnboardingMapping(
     return search;
   }
 
-  const competitors = search.data.slice(0, 5).map((result): CompetitorRecord => ({
+  const competitorSuggestions = search.data.slice(0, 8).map((result): CompetitorRecord => ({
     comp_name: competitorNameFromResult(result),
     website: result.url,
+    website_domain: result.domain,
     analysis_summary: result.content || `Potential competitor in ${input.industry}.`,
-    risk_level: "med"
+    risk_level: "med",
+    source_type: "ai",
+    knowledge_block: {
+      source_title: result.title,
+      source_url: result.url,
+      summary: result.content,
+      score: result.score
+    }
   }));
 
   return serviceSuccess({
     company: input,
     ai_generated_profile: identity.data,
-    competitors
+    competitor_suggestions: competitorSuggestions
   });
 }

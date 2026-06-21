@@ -6,6 +6,44 @@ export type WebsiteScrapeResult = {
   urls: string[];
 };
 
+function isPrivateIpv4(hostname: string) {
+  const parts = hostname.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  const [first, second] = parts;
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
+export function isSafeScrapeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return false;
+    }
+    if (
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname.startsWith("[")
+    ) {
+      return false;
+    }
+    return !isPrivateIpv4(hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function htmlToText(html: string) {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -67,8 +105,23 @@ export async function fetchCompanyWebsiteText(
       continue;
     }
 
+    if (!isSafeScrapeUrl(url)) {
+      continue;
+    }
+
     fetched.add(url);
-    const response = await fetcher(url, { redirect: "follow" });
+    const response = await fetcher(url, { redirect: "manual" });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (location) {
+        const nextUrl = new URL(location, url).toString();
+        if (isSafeScrapeUrl(nextUrl) && !fetched.has(nextUrl)) {
+          queue.unshift(nextUrl);
+        }
+      }
+      continue;
+    }
+
     if (!response.ok) {
       continue;
     }

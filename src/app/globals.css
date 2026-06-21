@@ -4,6 +4,16 @@
 
 :root {
   color-scheme: dark;
+  --bg-base: #05080a;
+  --bg-panel: #0d1417;
+  --border-muted: #243138;
+  --text-primary: #f2f5ed;
+  --text-secondary: #c3ccc2;
+  --text-muted: #79867f;
+  --amber: #d6a640;
+  --green: #8fbf63;
+  --olive: #536b3f;
+  --red: #b84a45;
 }
 
 * {
@@ -12,5 +22,5 @@
 
 body {
   margin: 0;
-  background: #020617;
+  background: var(--bg-base);
 }

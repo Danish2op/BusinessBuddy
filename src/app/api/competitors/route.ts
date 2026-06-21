@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 
+import { rejectDisallowedOrigin } from "@/lib/security/route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { normalizeOptionalHttpUrl } from "@/lib/url";
+import { domainFromHttpUrl, normalizeOptionalHttpUrl } from "@/lib/url";
 
 export async function POST(request: Request) {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) {
+    return blocked;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }
@@ -43,10 +49,13 @@ export async function POST(request: Request) {
       company_id: company.id,
       comp_name: payload.comp_name.trim(),
       website,
+      linkedin_url: linkedin,
+      website_domain: domainFromHttpUrl(website),
+      source_type: "manual",
       analysis_summary: linkedin ? `Manual competitor. LinkedIn: ${linkedin}` : "Manual competitor.",
       risk_level: "med"
     })
-    .select("id,comp_name,website,analysis_summary,risk_level")
+    .select("id,comp_name,website,linkedin_url,analysis_summary,risk_level")
     .single();
 
   if (error || !data) {

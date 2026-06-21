@@ -15,8 +15,11 @@ export type DashboardCompetitor = {
 
 export type DashboardReport = {
   id: string;
+  title?: string | null;
   summary: string;
   category: string;
+  risk_level?: "low" | "med" | "high" | null;
+  source_url?: string | null;
   created_at: string | null;
 };
 
@@ -131,14 +134,20 @@ export function WarRoom({
               {reports.length === 0 && <p className="text-sm text-[var(--text-muted)]">No reports yet.</p>}
               {reports.map((report) => (
                 <div key={report.id} className="border-l-2 border-[var(--amber)] pl-3 text-sm text-[var(--text-secondary)]">
-                  <span className="text-[var(--amber)]">{report.category}</span> — {report.summary}
+                  <span className="text-[var(--amber)]">{report.category}</span> — {report.title ? `${report.title}: ` : ""}
+                  {report.summary}
+                  {report.source_url && (
+                    <a className="ml-2 text-[var(--green)] underline" href={report.source_url} rel="noreferrer" target="_blank">
+                      Source
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
           </section>
         </section>
       </div>
-      <AdvisorChat />
+      <AdvisorChat companyId={companyId} />
     </main>
   );
 }

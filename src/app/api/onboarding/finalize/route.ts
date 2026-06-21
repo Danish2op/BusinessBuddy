@@ -20,40 +20,34 @@ export async function POST(request: Request) {
 
   const payload = (await request.json().catch(() => null)) as {
     companyId?: string;
-    enabled?: boolean;
+    acceptedIds?: string[];
+    rejectedIds?: string[];
   } | null;
 
-  if (!payload?.companyId || typeof payload.enabled !== "boolean") {
-    return NextResponse.json({ error: "companyId and enabled are required." }, { status: 400 });
+  if (!payload?.companyId || !Array.isArray(payload.acceptedIds)) {
+    return NextResponse.json({ error: "companyId and acceptedIds are required." }, { status: 400 });
   }
 
-  const { data: company, error: readError } = await supabase
+  const { data: company } = await supabase
     .from("companies")
     .select("id")
     .eq("id", payload.companyId)
     .eq("user_id", user.id)
     .single();
 
-  if (readError || !company) {
+  if (!company) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
 
-  const { data, error } = await supabase
-    .from("companies")
-    .update({
-      monitoring_enabled: payload.enabled
-    })
-    .eq("id", payload.companyId)
-    .eq("user_id", user.id)
-    .select("id,monitoring_enabled")
-    .single();
+  const { data, error } = await supabase.rpc("finalize_competitors", {
+    p_company_id: company.id,
+    p_accepted_ids: payload.acceptedIds,
+    p_rejected_ids: payload.rejectedIds ?? []
+  });
 
-  if (error || !data) {
-    return NextResponse.json({ error: "Could not update monitoring." }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: "Could not finalize competitors.", detail: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({
-    id: data.id,
-    monitoring_enabled: Boolean(data.monitoring_enabled)
-  });
+  return NextResponse.json({ ok: true, result: data });
 }

@@ -16,7 +16,9 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data: companies, error: companiesError } = await supabase
     .from("companies")
-    .select("id,name,user_id,moat_description,ai_generated_profile,competitors(id,comp_name,website)")
+    .select("id,name,user_id,moat_description,monitoring_enabled,setup_status,competitors(id,comp_name,website)")
+    .eq("monitoring_enabled", true)
+    .eq("setup_status", "complete")
     .limit(25);
 
   if (companiesError) {
@@ -33,11 +35,7 @@ export async function GET(request: Request) {
   const tavily = createTavilyClient();
   const resend = createResendClient();
   const reports = [];
-
-  const monitoredCompanies = (companies ?? []).filter((company) => {
-    const profile = company.ai_generated_profile as { monitoring_enabled?: unknown } | null;
-    return profile?.monitoring_enabled === true;
-  });
+  const monitoredCompanies = companies ?? [];
 
   const ownerIds = Array.from(new Set(monitoredCompanies.map((company) => company.user_id).filter(Boolean)));
   const { data: profiles, error: profilesError } =
@@ -68,30 +66,51 @@ export async function GET(request: Request) {
         gemini,
         tavily,
         resend: {
-          sendAlert: (payload) =>
-            ownerEmail
-              ? resend.sendEmail({
-                  to: ownerEmail,
-                  subject: payload.subject,
-                  text: payload.text
-                })
-              : Promise.resolve({
-                  ok: false,
-                  error: {
-                    code: "missing_alert_recipient",
-                    message: "Company owner profile has no email address.",
-                    retryable: false
-                  }
-                })
+          sendAlert: async () => ({ ok: true, data: { id: "deferred-until-report-insert" } })
         }
       }
     );
 
     if (result.ok && result.data.reports.length > 0) {
-      reports.push(...result.data.reports);
-      await supabase.from("intelligence_reports").insert(
-        result.data.reports.map(({ risk_level: _riskLevel, ...report }) => report)
+      const reportRows = result.data.reports.map(
+        ({ should_alert: _shouldAlert, alert_subject: _alertSubject, alert_body: _alertBody, ...report }) => report
       );
+      const { data: insertedReports, error: insertError } = await supabase
+        .from("intelligence_reports")
+        .upsert(reportRows, { onConflict: "company_id,signal_hash", ignoreDuplicates: true })
+        .select("id,signal_hash");
+
+      if (insertError) {
+        return NextResponse.json({ error: "Could not save intelligence reports.", detail: insertError.message }, { status: 500 });
+      }
+
+      const insertedHashes = new Set((insertedReports ?? []).map((report) => report.signal_hash));
+      reports.push(...(insertedReports ?? []));
+
+      if (ownerEmail) {
+        for (const report of result.data.reports) {
+          if (!report.should_alert || !insertedHashes.has(report.signal_hash)) {
+            continue;
+          }
+
+          const email = await resend.sendEmail({
+            to: ownerEmail,
+            subject: report.alert_subject || `Strategic Alert: ${report.title}`,
+            text: report.alert_body || report.summary
+          });
+
+          if (email.ok) {
+            await supabase
+              .from("intelligence_reports")
+              .update({
+                email_sent_at: new Date().toISOString(),
+                email_id: email.data.id
+              })
+              .eq("company_id", company.id)
+              .eq("signal_hash", report.signal_hash);
+          }
+        }
+      }
     }
   }
 
