@@ -14,6 +14,11 @@ const ManualKnowledgeSchema = z.object({
   keywords: z.array(z.string()).default([])
 });
 
+function logoFromWebsite(website: string | null) {
+  const domain = domainFromHttpUrl(website);
+  return domain ? `https://logo.clearbit.com/${domain}` : null;
+}
+
 export async function POST(request: Request) {
   const blocked = rejectDisallowedOrigin(request);
   if (blocked) {
@@ -53,6 +58,7 @@ export async function POST(request: Request) {
 
   const website = normalizeOptionalHttpUrl(payload.website);
   const linkedin = normalizeOptionalHttpUrl(payload.linkedin_url);
+  const logoUrl = logoFromWebsite(website);
   const scrape = website ? await fetchCompanyWebsiteText(website) : null;
   let knowledgeBlock: z.infer<typeof ManualKnowledgeSchema> | null = null;
 
@@ -86,7 +92,10 @@ export async function POST(request: Request) {
         analysis_summary: knowledgeBlock?.summary ?? "Manual competitor draft.",
         risk_level: "med",
         status: "draft",
-        knowledge_block: knowledgeBlock
+        knowledge_block: {
+          ...(knowledgeBlock ?? {}),
+          logo_url: logoUrl
+        }
       },
       { onConflict: "company_id,website_domain" }
     )
@@ -97,5 +106,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save manual competitor suggestion." }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({
+    ...data,
+    logo_url: (data.knowledge_block as { logo_url?: string | null } | null)?.logo_url ?? null
+  });
 }

@@ -14,7 +14,7 @@ export default async function SetupPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,setup_status,competitor_suggestions(id,comp_name,website,linkedin_url,analysis_summary,risk_level,status,source_type)")
+    .select("id,setup_status,competitor_suggestions(id,comp_name,website,linkedin_url,analysis_summary,risk_level,status,source_type,knowledge_block)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();

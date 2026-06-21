@@ -9,6 +9,9 @@ export type DashboardCompetitor = {
   id: string;
   comp_name: string;
   website: string | null;
+  knowledge_block?: {
+    logo_url?: string | null;
+  } | null;
   analysis_summary: string | null;
   risk_level: "low" | "med" | "high";
 };
@@ -114,10 +117,23 @@ export function WarRoom({
                   </p>
                 )}
                 {competitors.map((competitor) => (
-                  <div key={competitor.id} className="flex items-center justify-between rounded border border-[var(--border-muted)] p-3">
-                    <div>
-                      <p className="text-sm font-medium">{competitor.comp_name}</p>
-                      <p className="text-xs text-[var(--text-muted)]">{competitor.analysis_summary || competitor.website || "Manual watch target"}</p>
+                  <div key={competitor.id} className="flex items-center justify-between gap-3 rounded border border-[var(--border-muted)] p-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      {competitor.knowledge_block?.logo_url ? (
+                        <img
+                          alt=""
+                          className="h-9 w-9 rounded border border-[var(--border-muted)] bg-white object-contain p-1"
+                          src={competitor.knowledge_block.logo_url}
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--border-muted)] bg-[#10161a] text-xs font-semibold text-[var(--amber)]">
+                          {competitor.comp_name.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{competitor.comp_name}</p>
+                        <p className="line-clamp-2 text-xs text-[var(--text-muted)]">{competitor.analysis_summary || competitor.website || "Manual watch target"}</p>
+                      </div>
                     </div>
                     <span className={`rounded px-2 py-1 text-xs ${competitor.risk_level === "high" ? "bg-[var(--red)] text-white" : competitor.risk_level === "med" ? "bg-[var(--amber)] text-black" : "bg-[var(--green)] text-black"}`}>
                       {competitor.risk_level}

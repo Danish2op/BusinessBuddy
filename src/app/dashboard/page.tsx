@@ -14,7 +14,7 @@ export default async function DashboardPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,name,moat_description,monitoring_enabled,setup_status,ai_generated_profile,competitors(id,comp_name,website,analysis_summary,risk_level),intelligence_reports(id,title,summary,category,risk_level,source_url,created_at)")
+    .select("id,name,moat_description,monitoring_enabled,setup_status,ai_generated_profile,competitors(id,comp_name,website,knowledge_block,analysis_summary,risk_level),intelligence_reports(id,title,summary,category,risk_level,source_url,created_at)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();

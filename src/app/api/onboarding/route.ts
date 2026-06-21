@@ -6,6 +6,19 @@ import { rejectDisallowedOrigin } from "@/lib/security/route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createTavilyClient } from "@/lib/tavily";
 
+type SavedSuggestion = {
+  id: string;
+  comp_name: string;
+  website: string | null;
+  linkedin_url: string | null;
+  website_domain: string | null;
+  analysis_summary: string | null;
+  risk_level: "low" | "med" | "high";
+  status: "draft" | "accepted" | "rejected";
+  source_type: "ai" | "manual";
+  knowledge_block: { logo_url?: string | null } | null;
+};
+
 export async function POST(request: Request) {
   const blocked = rejectDisallowedOrigin(request);
   if (blocked) {
@@ -62,23 +75,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save company profile." }, { status: 500 });
   }
 
+  let savedSuggestions: Array<SavedSuggestion & { logo_url: string | null }> = [];
+
   if (mapped.data.competitor_suggestions.length > 0) {
-    const { error: competitorError } = await supabase.from("competitor_suggestions").upsert(
-      mapped.data.competitor_suggestions.map((competitor) => ({
-        company_id: company.id,
-        ...competitor
-      })),
-      { onConflict: "company_id,website_domain" }
-    );
+    const { data: suggestions, error: competitorError } = await supabase
+      .from("competitor_suggestions")
+      .upsert(
+        mapped.data.competitor_suggestions.map((competitor) => {
+          const { logo_url, knowledge_block, ...record } = competitor;
+
+          return {
+            company_id: company.id,
+            ...record,
+            knowledge_block: {
+              ...(knowledge_block ?? {}),
+              logo_url: logo_url ?? knowledge_block?.logo_url ?? null
+            }
+          };
+        }),
+        { onConflict: "company_id,website_domain" }
+      )
+      .select("id,comp_name,website,linkedin_url,website_domain,analysis_summary,risk_level,status,source_type,knowledge_block");
 
     if (competitorError) {
       return NextResponse.json({ error: "Could not save competitor suggestions." }, { status: 500 });
     }
+
+    savedSuggestions = ((suggestions ?? []) as SavedSuggestion[]).map((suggestion) => ({
+      ...suggestion,
+      logo_url: suggestion.knowledge_block?.logo_url ?? null
+    }));
   }
 
   return NextResponse.json({
     companyId: company.id,
     aiGeneratedProfile: mapped.data.ai_generated_profile,
-    competitorSuggestions: mapped.data.competitor_suggestions
+    competitorSuggestions: savedSuggestions
   });
 }

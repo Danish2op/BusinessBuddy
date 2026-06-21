@@ -27,6 +27,33 @@ describe("OnboardingInputSchema", () => {
     expect(parsed.target_keywords).toEqual(["competitive intelligence", "SaaS", "founders"]);
   });
 
+  it("accepts businesses without a website or LinkedIn and defaults broad targeting fields", () => {
+    const parsed = OnboardingInputSchema.parse({
+      name: "Offline Alpha Lab",
+      website: "",
+      linkedin_url: "",
+      moat_description: "Private trading education with hands-on founder coaching.",
+      team_details: "",
+      industry: "Education",
+      niche: "",
+      motive: "",
+      target_age_min: "",
+      target_age_max: "",
+      target_gender: "",
+      target_countries: [],
+      target_keywords: "",
+      business_costing: ""
+    });
+
+    expect(parsed.website).toBeUndefined();
+    expect(parsed.linkedin_url).toBeUndefined();
+    expect(parsed.target_gender).toBe("all");
+    expect(parsed.target_countries).toEqual(["Global"]);
+    expect(parsed.team_details).toBe("");
+    expect(parsed.niche).toBe("");
+    expect(parsed.motive).toBe("");
+  });
+
   it("rejects missing company name and invalid urls", () => {
     const parsed = OnboardingInputSchema.safeParse({
       name: "",
@@ -47,7 +74,7 @@ describe("OnboardingInputSchema", () => {
 
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues.map((issue) => issue.path.join("."))).toEqual(
-      expect.arrayContaining(["name", "website", "linkedin_url", "niche", "target_age_max"])
+      expect.arrayContaining(["name", "website", "linkedin_url", "target_age_max"])
     );
   });
 });

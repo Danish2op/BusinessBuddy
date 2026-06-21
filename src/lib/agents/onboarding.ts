@@ -1,11 +1,14 @@
 import type { z } from "zod";
 
-import { buildStrategicIdentityPrompt } from "@/lib/gemini/prompts";
+import { buildCompetitorCompanyExtractionPrompt, buildStrategicIdentityPrompt } from "@/lib/gemini/prompts";
 import type { NormalizedTavilyResult } from "@/lib/tavily/normalize";
+import { domainFromHttpUrl, normalizeOptionalHttpUrl } from "@/lib/url";
 import {
+  CompetitorCompanyExtractionSchema,
   OnboardingInputSchema,
   StrategicIdentitySchema,
   type CompetitorRecord,
+  type CompetitorCompanyExtraction,
   type OnboardingInput,
   type StrategicIdentity
 } from "@/lib/schemas/onboarding";
@@ -16,7 +19,8 @@ import { serviceFailure, serviceSuccess } from "./types";
 type GeminiLike = {
   generateJsonWithSchema<TSchema extends z.ZodTypeAny>(
     prompt: string,
-    schema: TSchema
+    schema: TSchema,
+    options?: { temperature?: number; maxOutputTokens?: number }
   ): Promise<ServiceResult<z.infer<TSchema>>>;
 };
 
@@ -40,13 +44,126 @@ export type OnboardingMappingResult = {
   competitor_suggestions: CompetitorRecord[];
 };
 
-function competitorNameFromResult(result: NormalizedTavilyResult): string {
-  const cleanTitle = result.title
-    .replace(/\s+[-|].*$/, "")
-    .replace(/\b(alternatives|competitors|reviews)\b/gi, "")
-    .trim();
+const EXCLUDED_COMPETITOR_DOMAINS = [
+  "brokerchooser.com",
+  "stockanalysis.com",
+  "g2.com",
+  "youtube.com",
+  "youtu.be",
+  "reddit.com",
+  "investing.com",
+  "b2broker.com",
+  "forbes.com",
+  "investopedia.com",
+  "capterra.com",
+  "softwareadvice.com",
+  "trustradius.com",
+  "trustpilot.com",
+  "wikipedia.org",
+  "medium.com",
+  "substack.com",
+  "crunchbase.com",
+  "producthunt.com"
+];
 
-  return cleanTitle || result.domain.replace(/\..*$/, "");
+type ExtractedCompetitor = CompetitorCompanyExtraction["competitors"][number];
+
+function normalizeCompanyKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function isExcludedWebsiteDomain(domain: string | null | undefined) {
+  if (!domain) {
+    return false;
+  }
+
+  const normalized = domain.replace(/^www\./i, "").toLowerCase();
+  return EXCLUDED_COMPETITOR_DOMAINS.some((excluded) => normalized === excluded || normalized.endsWith(`.${excluded}`));
+}
+
+function isLinkedInCompanyUrl(url: string | null | undefined) {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./i, "").toLowerCase() === "linkedin.com" && parsed.pathname.startsWith("/company/");
+  } catch {
+    return false;
+  }
+}
+
+function companyLogoFromWebsite(website: string | null | undefined) {
+  const domain = domainFromHttpUrl(website);
+  return domain ? `https://logo.clearbit.com/${domain}` : undefined;
+}
+
+function chooseOfficialWebsite(candidate: ExtractedCompetitor, lookupResults: NormalizedTavilyResult[]) {
+  const candidateWebsite = normalizeOptionalHttpUrl(candidate.website);
+  const candidateDomain = domainFromHttpUrl(candidateWebsite);
+  if (candidateWebsite && !isExcludedWebsiteDomain(candidateDomain) && !isLinkedInCompanyUrl(candidateWebsite)) {
+    return candidateWebsite;
+  }
+
+  const nameKey = normalizeCompanyKey(candidate.name);
+  const candidates = lookupResults
+    .map((result) => normalizeOptionalHttpUrl(result.url))
+    .filter((url): url is string => Boolean(url))
+    .filter((url) => {
+      const domain = domainFromHttpUrl(url);
+      return !isExcludedWebsiteDomain(domain) && !isLinkedInCompanyUrl(url);
+    });
+
+  const strongDomainMatch = candidates.find((url) => {
+    const domain = domainFromHttpUrl(url);
+    const domainKey = normalizeCompanyKey(domain?.split(".")[0] ?? "");
+    return domainKey.length > 2 && (nameKey.includes(domainKey) || domainKey.includes(nameKey));
+  });
+
+  return strongDomainMatch ?? candidates[0];
+}
+
+function chooseLinkedInUrl(candidate: ExtractedCompetitor, lookupResults: NormalizedTavilyResult[]) {
+  const candidateLinkedIn = normalizeOptionalHttpUrl(candidate.linkedin_url);
+  if (isLinkedInCompanyUrl(candidateLinkedIn)) {
+    return candidateLinkedIn;
+  }
+
+  return lookupResults
+    .map((result) => normalizeOptionalHttpUrl(result.url))
+    .find((url): url is string => isLinkedInCompanyUrl(url));
+}
+
+function dedupeExtractedCompanies(candidates: ExtractedCompetitor[]) {
+  const seen = new Set<string>();
+  const deduped: ExtractedCompetitor[] = [];
+
+  for (const candidate of candidates) {
+    const key = normalizeCompanyKey(candidate.name);
+    if (!key || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(candidate);
+  }
+
+  return deduped;
+}
+
+function fallbackOfficialCandidates(results: NormalizedTavilyResult[]): ExtractedCompetitor[] {
+  return results
+    .filter((result) => !isExcludedWebsiteDomain(result.domain))
+    .slice(0, 8)
+    .map((result) => ({
+      name: result.title.replace(/\s+[-|].*$/, "").trim() || result.domain.replace(/\..*$/, ""),
+      website: result.url,
+      linkedin_url: null,
+      logo_url: null,
+      description: result.content || `Potential competitor from ${result.domain}.`,
+      evidence_urls: [result.url]
+    }));
 }
 
 function fallbackQueries(input: OnboardingInput, identity: StrategicIdentity): string[] {
@@ -57,6 +174,48 @@ function fallbackQueries(input: OnboardingInput, identity: StrategicIdentity): s
     `${keyword} ${input.industry} competitors`,
     `best ${input.industry} tools for ${identity.customers[0] ?? "businesses"}`
   ];
+}
+
+async function enrichExtractedCompetitor(
+  candidate: ExtractedCompetitor,
+  tavily: TavilyLike
+): Promise<CompetitorRecord | null> {
+  const lookup = await tavily.search({
+    query: `${candidate.name} official website LinkedIn company`,
+    maxResults: 5,
+    searchDepth: "basic"
+  });
+  const lookupResults = lookup.ok ? lookup.data : [];
+  const website = chooseOfficialWebsite(candidate, lookupResults);
+  const linkedin = chooseLinkedInUrl(candidate, lookupResults);
+  const websiteDomain = domainFromHttpUrl(website);
+
+  if (isExcludedWebsiteDomain(websiteDomain)) {
+    return null;
+  }
+
+  const logoUrl = normalizeOptionalHttpUrl(candidate.logo_url) ?? companyLogoFromWebsite(website);
+  const firstEvidence = candidate.evidence_urls[0] ?? lookupResults[0]?.url;
+  const bestSummary = candidate.description || lookupResults.find((result) => result.content)?.content;
+
+  return {
+    comp_name: candidate.name.trim(),
+    website: website ?? undefined,
+    linkedin_url: linkedin ?? undefined,
+    logo_url: logoUrl ?? undefined,
+    website_domain: websiteDomain ?? undefined,
+    analysis_summary: bestSummary || `Potential competitor to monitor.`,
+    risk_level: "med",
+    source_type: "ai",
+    knowledge_block: {
+      source_title: lookupResults[0]?.title,
+      source_url: firstEvidence,
+      summary: bestSummary,
+      logo_url: logoUrl ?? undefined,
+      evidence_urls: Array.from(new Set([...candidate.evidence_urls, ...lookupResults.map((result) => result.url)])).slice(0, 6),
+      score: lookupResults[0]?.score
+    }
+  };
 }
 
 export async function runOnboardingMapping(
@@ -98,20 +257,30 @@ export async function runOnboardingMapping(
     return search;
   }
 
-  const competitorSuggestions = search.data.slice(0, 8).map((result): CompetitorRecord => ({
-    comp_name: competitorNameFromResult(result),
-    website: result.url,
-    website_domain: result.domain,
-    analysis_summary: result.content || `Potential competitor in ${input.industry}.`,
-    risk_level: "med",
-    source_type: "ai",
-    knowledge_block: {
-      source_title: result.title,
-      source_url: result.url,
-      summary: result.content,
-      score: result.score
-    }
-  }));
+  const extracted = await dependencies.gemini.generateJsonWithSchema(
+    buildCompetitorCompanyExtractionPrompt({
+      businessName: input.name,
+      industry: input.industry,
+      strategicIdentity: identity.data,
+      searchResults: search.data.slice(0, 12).map((result) => ({
+        title: result.title,
+        url: result.url,
+        domain: result.domain,
+        content: result.content
+      }))
+    }),
+    CompetitorCompanyExtractionSchema,
+    { maxOutputTokens: 3500 }
+  );
+
+  if (!extracted.ok) {
+    return extracted;
+  }
+
+  const extractedCandidates = dedupeExtractedCompanies(extracted.data.competitors).slice(0, 8);
+  const candidates = extractedCandidates.length > 0 ? extractedCandidates : fallbackOfficialCandidates(search.data);
+  const enriched = await Promise.all(candidates.map((candidate) => enrichExtractedCompetitor(candidate, dependencies.tavily)));
+  const competitorSuggestions = enriched.filter((competitor): competitor is CompetitorRecord => Boolean(competitor)).slice(0, 8);
 
   return serviceSuccess({
     company: input,

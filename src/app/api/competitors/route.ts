@@ -4,6 +4,11 @@ import { rejectDisallowedOrigin } from "@/lib/security/route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { domainFromHttpUrl, normalizeOptionalHttpUrl } from "@/lib/url";
 
+function logoFromWebsite(website: string | null) {
+  const domain = domainFromHttpUrl(website);
+  return domain ? `https://logo.clearbit.com/${domain}` : null;
+}
+
 export async function POST(request: Request) {
   const blocked = rejectDisallowedOrigin(request);
   if (blocked) {
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
 
   const website = normalizeOptionalHttpUrl(payload.website);
   const linkedin = normalizeOptionalHttpUrl(payload.linkedin_url);
+  const logoUrl = logoFromWebsite(website);
   const { data, error } = await supabase
     .from("competitors")
     .insert({
@@ -52,10 +58,13 @@ export async function POST(request: Request) {
       linkedin_url: linkedin,
       website_domain: domainFromHttpUrl(website),
       source_type: "manual",
+      knowledge_block: {
+        logo_url: logoUrl
+      },
       analysis_summary: linkedin ? `Manual competitor. LinkedIn: ${linkedin}` : "Manual competitor.",
       risk_level: "med"
     })
-    .select("id,comp_name,website,linkedin_url,analysis_summary,risk_level")
+    .select("id,comp_name,website,linkedin_url,knowledge_block,analysis_summary,risk_level")
     .single();
 
   if (error || !data) {

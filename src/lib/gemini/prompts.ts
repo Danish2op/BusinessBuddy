@@ -11,6 +11,18 @@ type CompetitorDiscoveryInput = {
   market?: string;
 };
 
+type CompetitorCompanyExtractionInput = {
+  businessName: string;
+  industry?: string;
+  strategicIdentity: unknown;
+  searchResults: Array<{
+    title: string;
+    url: string;
+    domain: string;
+    content: string;
+  }>;
+};
+
 type ThreatFilteringInput = {
   businessName: string;
   strategicIdentity: string;
@@ -67,6 +79,27 @@ export function buildCompetitorDiscoveryPrompt(input: CompetitorDiscoveryInput):
       businessName: input.businessName,
       market: input.market,
       strategicIdentity: input.strategicIdentity
+    })
+  ].join("\n");
+}
+
+export function buildCompetitorCompanyExtractionPrompt(input: CompetitorCompanyExtractionInput): string {
+  return [
+    "Extract actual competitor companies/products from web search results for BusinessBuddy onboarding.",
+    "Only output real companies, products, brokerages, SaaS vendors, or platforms that a user could monitor.",
+    "Do not output publishers, listicles, article titles, review directories, YouTube videos, Reddit threads, news sites, or generic category pages as competitors.",
+    "If a source URL is an article/listicle/directory, use it only as evidence. Do not use that source URL as the competitor website.",
+    "Prefer official company website, official LinkedIn company page, logo URL, and a concise description when available or strongly evidenced.",
+    "If website, LinkedIn, or logo is not available, return null for that field.",
+    "Return 5 to 8 strongest direct competitors when evidence allows.",
+    untrustedDataInstruction,
+    jsonOnlyInstruction,
+    "JSON shape: {\"competitors\":[{\"name\":\"string\",\"website\":\"url|null\",\"linkedin_url\":\"url|null\",\"logo_url\":\"url|null\",\"description\":\"string\",\"evidence_urls\":[\"url\"]}]}.",
+    dataBlock("business_data", {
+      businessName: input.businessName,
+      industry: input.industry,
+      strategicIdentity: input.strategicIdentity,
+      searchResults: input.searchResults
     })
   ].join("\n");
 }
