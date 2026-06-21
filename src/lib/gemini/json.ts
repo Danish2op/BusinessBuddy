@@ -3,6 +3,54 @@ import { z } from "zod";
 import type { ServiceResult } from "@/lib/agents/types";
 import { serviceFailure, serviceSuccess } from "@/lib/agents/types";
 
+function findBalancedJson(value: string): string | undefined {
+  const start = value.search(/[\[{]/);
+  if (start < 0) {
+    return undefined;
+  }
+
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start; index < value.length; index += 1) {
+    const character = value[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (character === "{" || character === "[") {
+      stack.push(character === "{" ? "}" : "]");
+      continue;
+    }
+
+    if (character === "}" || character === "]") {
+      if (stack.pop() !== character) {
+        return undefined;
+      }
+
+      if (stack.length === 0) {
+        return value.slice(start, index + 1).trim();
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function stripJsonFences(value: string): string {
   const trimmed = value.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -16,7 +64,7 @@ export function stripJsonFences(value: string): string {
     return embeddedFence[1].trim();
   }
 
-  return trimmed;
+  return findBalancedJson(trimmed) ?? trimmed;
 }
 
 export function parseJsonStrict<T = unknown>(value: string): ServiceResult<T> {
