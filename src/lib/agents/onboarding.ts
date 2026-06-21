@@ -121,7 +121,7 @@ function chooseOfficialWebsite(candidate: ExtractedCompetitor, lookupResults: No
     return domainKey.length > 2 && (nameKey.includes(domainKey) || domainKey.includes(nameKey));
   });
 
-  return strongDomainMatch ?? candidates[0];
+  return strongDomainMatch;
 }
 
 function chooseLinkedInUrl(candidate: ExtractedCompetitor, lookupResults: NormalizedTavilyResult[]) {
@@ -152,20 +152,6 @@ function dedupeExtractedCompanies(candidates: ExtractedCompetitor[]) {
   return deduped;
 }
 
-function fallbackOfficialCandidates(results: NormalizedTavilyResult[]): ExtractedCompetitor[] {
-  return results
-    .filter((result) => !isExcludedWebsiteDomain(result.domain))
-    .slice(0, 8)
-    .map((result) => ({
-      name: result.title.replace(/\s+[-|].*$/, "").trim() || result.domain.replace(/\..*$/, ""),
-      website: result.url,
-      linkedin_url: null,
-      logo_url: null,
-      description: result.content || `Potential competitor from ${result.domain}.`,
-      evidence_urls: [result.url]
-    }));
-}
-
 function fallbackQueries(input: OnboardingInput, identity: StrategicIdentity): string[] {
   const keyword = identity.keywords[0] ?? input.industry;
 
@@ -190,7 +176,7 @@ async function enrichExtractedCompetitor(
   const linkedin = chooseLinkedInUrl(candidate, lookupResults);
   const websiteDomain = domainFromHttpUrl(website);
 
-  if (isExcludedWebsiteDomain(websiteDomain)) {
+  if ((!website && !linkedin) || isExcludedWebsiteDomain(websiteDomain)) {
     return null;
   }
 
@@ -237,7 +223,17 @@ export async function runOnboardingMapping(
       businessName: input.name,
       industry: input.industry,
       website: input.website,
-      description: input.moat_description
+      linkedinUrl: input.linkedin_url,
+      description: input.moat_description,
+      teamDetails: input.team_details,
+      niche: input.niche,
+      motive: input.motive,
+      targetAgeMin: input.target_age_min,
+      targetAgeMax: input.target_age_max,
+      targetGender: input.target_gender,
+      targetCountries: input.target_countries,
+      targetKeywords: input.target_keywords,
+      businessCosting: input.business_costing
     }),
     StrategicIdentitySchema
   );
@@ -278,8 +274,7 @@ export async function runOnboardingMapping(
   }
 
   const extractedCandidates = dedupeExtractedCompanies(extracted.data.competitors).slice(0, 8);
-  const candidates = extractedCandidates.length > 0 ? extractedCandidates : fallbackOfficialCandidates(search.data);
-  const enriched = await Promise.all(candidates.map((candidate) => enrichExtractedCompetitor(candidate, dependencies.tavily)));
+  const enriched = await Promise.all(extractedCandidates.map((candidate) => enrichExtractedCompetitor(candidate, dependencies.tavily)));
   const competitorSuggestions = enriched.filter((competitor): competitor is CompetitorRecord => Boolean(competitor)).slice(0, 8);
 
   return serviceSuccess({

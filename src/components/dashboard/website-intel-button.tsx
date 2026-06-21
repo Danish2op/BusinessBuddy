@@ -22,8 +22,9 @@ export function WebsiteIntelButton({ companyId }: { companyId?: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId })
     });
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
     setPending(false);
-    setMessage(response.ok ? "Website intel updated." : "Could not refresh website intel.");
+    setMessage(response.ok ? "Website intel updated." : body?.error ?? "Could not refresh website intel.");
     if (response.ok) {
       router.refresh();
     }

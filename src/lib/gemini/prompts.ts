@@ -2,7 +2,17 @@ type StrategicIdentityInput = {
   businessName: string;
   industry?: string;
   website?: string;
+  linkedinUrl?: string;
   description?: string;
+  teamDetails?: string;
+  niche?: string;
+  motive?: string;
+  targetAgeMin?: number;
+  targetAgeMax?: number;
+  targetGender?: string;
+  targetCountries?: string[];
+  targetKeywords?: string[];
+  businessCosting?: string;
 };
 
 type CompetitorDiscoveryInput = {
@@ -63,7 +73,17 @@ export function buildStrategicIdentityPrompt(input: StrategicIdentityInput): str
       businessName: input.businessName,
       industry: input.industry,
       website: input.website,
-      description: input.description
+      linkedinUrl: input.linkedinUrl,
+      description: input.description,
+      teamDetails: input.teamDetails,
+      niche: input.niche,
+      motive: input.motive,
+      targetAgeMin: input.targetAgeMin,
+      targetAgeMax: input.targetAgeMax,
+      targetGender: input.targetGender,
+      targetCountries: input.targetCountries,
+      targetKeywords: input.targetKeywords,
+      businessCosting: input.businessCosting
     })
   ].join("\n");
 }

@@ -10,6 +10,7 @@ type AdvisorChatProps = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  citations?: string[];
 };
 
 export function AdvisorChat({ companyId }: AdvisorChatProps) {
@@ -41,6 +42,7 @@ export function AdvisorChat({ companyId }: AdvisorChatProps) {
       | {
           answer?: string;
           options?: { aggressive?: string; defensive?: string; pivot?: string };
+          citations?: string[];
           error?: string;
         }
       | null;
@@ -61,7 +63,8 @@ export function AdvisorChat({ companyId }: AdvisorChatProps) {
           payload.options?.pivot ? `Pivot: ${payload.options.pivot}` : ""
         ]
           .filter(Boolean)
-          .join("\n\n")
+          .join("\n\n"),
+        citations: payload.citations ?? []
       }
     ]);
   }
@@ -84,6 +87,11 @@ export function AdvisorChat({ companyId }: AdvisorChatProps) {
                   {item.role === "assistant" ? "Advisor" : "You"}:
                 </span>{" "}
                 {item.content}
+                {item.role === "assistant" && item.citations && item.citations.length > 0 && (
+                  <div className="mt-2 text-xs text-[var(--text-muted)]">
+                    Citations: {item.citations.join(", ")}
+                  </div>
+                )}
               </div>
             ))}
             {pending && <p className="text-[var(--text-muted)]">Advisor thinking...</p>}
@@ -113,6 +121,7 @@ export function AdvisorChat({ companyId }: AdvisorChatProps) {
               <Send size={18} />
             </button>
           </div>
+          {!companyId && <p className="mt-2 text-xs text-[var(--text-muted)]">Complete setup to enable advisor chat.</p>}
         </section>
       ) : (
         <button

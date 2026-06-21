@@ -29,6 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "companyId is required." }, { status: 400 });
   }
 
+  if (!payload.message?.trim()) {
+    return NextResponse.json({ error: "Advisor message is required.", code: "empty_advisor_message" }, { status: 400 });
+  }
+
   const { data: company } = await supabase
     .from("companies")
     .select("id,name,moat_description,ai_generated_profile,competitors(id,comp_name,analysis_summary,knowledge_block,risk_level)")
@@ -50,10 +54,10 @@ export async function POST(request: Request) {
   await supabase.from("advisor_messages").insert({
     company_id: payload.companyId,
     role: "user",
-    content: payload.message ?? ""
+    content: payload.message
   });
 
-  const answer = await answerAdvisorQuestion(payload.message ?? "", {
+  const answer = await answerAdvisorQuestion(payload.message, {
     company,
     reports: reports ?? []
   }, {

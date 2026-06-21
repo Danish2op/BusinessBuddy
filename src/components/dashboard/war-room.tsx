@@ -9,6 +9,7 @@ export type DashboardCompetitor = {
   id: string;
   comp_name: string;
   website: string | null;
+  linkedin_url?: string | null;
   knowledge_block?: {
     logo_url?: string | null;
   } | null;
@@ -60,9 +61,9 @@ export function WarRoom({
           </div>
           <nav className="mt-8 grid gap-2 text-sm text-[var(--text-secondary)]">
             {["Dashboard", "Intelligence", "Competitors", "Strategy", "Risks", "Settings"].map((item) => (
-              <a key={item} className="rounded-md px-3 py-2 hover:bg-[var(--bg-panel)]" href="#">
+              <span key={item} className="rounded-md px-3 py-2 text-[var(--text-muted)]">
                 {item}
-              </a>
+              </span>
             ))}
           </nav>
         </aside>
@@ -133,6 +134,18 @@ export function WarRoom({
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{competitor.comp_name}</p>
                         <p className="line-clamp-2 text-xs text-[var(--text-muted)]">{competitor.analysis_summary || competitor.website || "Manual watch target"}</p>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                          {competitor.website && (
+                            <a className="text-[var(--green)] underline" href={competitor.website} rel="noreferrer" target="_blank">
+                              Website
+                            </a>
+                          )}
+                          {competitor.linkedin_url && (
+                            <a className="text-[var(--green)] underline" href={competitor.linkedin_url} rel="noreferrer" target="_blank">
+                              LinkedIn
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span className={`rounded px-2 py-1 text-xs ${competitor.risk_level === "high" ? "bg-[var(--red)] text-white" : competitor.risk_level === "med" ? "bg-[var(--amber)] text-black" : "bg-[var(--green)] text-black"}`}>

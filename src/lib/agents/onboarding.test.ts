@@ -210,6 +210,87 @@ describe("runOnboardingMapping", () => {
     expect(result.data.competitor_suggestions.map((item) => item.website_domain)).not.toContain("stockanalysis.com");
   });
 
+  it("does not create fallback competitors from article pages when no official company evidence exists", async () => {
+    const searchResults: NormalizedTavilyResult[] = [
+      {
+        title: "10 AI Tools Changing Algo Trading",
+        url: "https://marketwatch.example.com/ai-tools-algo-trading",
+        domain: "marketwatch.example.com",
+        content: "A roundup article mentions several broad categories but no official company profile."
+      }
+    ];
+    let geminiCalls = 0;
+
+    const result = await runOnboardingMapping(validInput, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          _prompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> => {
+          geminiCalls += 1;
+          if (geminiCalls === 1) {
+            return serviceSuccess(
+              schema.parse({
+                positioning: "Algorithmic trading intelligence",
+                customers: ["Retail traders"],
+                offerings: ["Trading signals"],
+                keywords: ["algo trading"]
+              })
+            );
+          }
+
+          return serviceSuccess(schema.parse({ competitors: [] }));
+        }
+      },
+      tavily: {
+        search: async () => serviceSuccess(searchResults)
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.competitor_suggestions).toEqual([]);
+  });
+
+  it("includes the full setup profile in the strategic identity prompt", async () => {
+    let identityPrompt = "";
+
+    await runOnboardingMapping(validInput, {
+      gemini: {
+        generateJsonWithSchema: async <TSchema extends z.ZodTypeAny>(
+          prompt: string,
+          schema: TSchema
+        ): Promise<ServiceResult<z.infer<TSchema>>> => {
+          if (!identityPrompt) {
+            identityPrompt = prompt;
+            return serviceSuccess(
+              schema.parse({
+                positioning: "AI strategic intelligence for SaaS operators",
+                customers: ["Founder-led SaaS teams"],
+                offerings: ["Competitor monitoring"],
+                keywords: ["competitive intelligence"]
+              })
+            );
+          }
+
+          return serviceSuccess(schema.parse({ competitors: [] }));
+        }
+      },
+      tavily: {
+        search: async () => serviceSuccess([])
+      }
+    });
+
+    expect(identityPrompt).toContain("Small product team focused on strategy workflows.");
+    expect(identityPrompt).toContain("Founder-led SaaS strategy");
+    expect(identityPrompt).toContain("Help small SaaS teams outmaneuver incumbents.");
+    expect(identityPrompt).toContain("US");
+    expect(identityPrompt).toContain("$99/mo");
+  });
+
   it("returns a controlled validation failure for invalid onboarding input", async () => {
     const result = await runOnboardingMapping(
       {
