@@ -42,9 +42,9 @@ function emailTextFor(report: HuntReportDraft): string {
 export async function deliverHuntReports(
   reports: HuntReportDraft[],
   dependencies: DeliverHuntReportsDependencies
-): Promise<ServiceResult<{ insertedReports: number; emailedReports: number }>> {
+): Promise<ServiceResult<{ insertedReports: number; emailedReports: number; emailFailures: number }>> {
   if (reports.length === 0) {
-    return serviceSuccess({ insertedReports: 0, emailedReports: 0 });
+    return serviceSuccess({ insertedReports: 0, emailedReports: 0, emailFailures: 0 });
   }
 
   const inserted = await dependencies.insertReports(reports.map(toInsertRow));
@@ -56,11 +56,13 @@ export async function deliverHuntReports(
   const insertedByHash = new Map(inserted.data.map((report) => [report.signal_hash, report]));
   const ownerEmail = dependencies.ownerEmail?.trim();
   let emailedReports = 0;
+  let emailFailures = 0;
 
   if (!ownerEmail) {
     return serviceSuccess({
       insertedReports: inserted.data.length,
-      emailedReports
+      emailedReports,
+      emailFailures
     });
   }
 
@@ -81,7 +83,8 @@ export async function deliverHuntReports(
     });
 
     if (!email.ok) {
-      return email;
+      emailFailures += 1;
+      continue;
     }
 
     const marked = await dependencies.markEmailSent({
@@ -90,13 +93,8 @@ export async function deliverHuntReports(
     });
 
     if (!marked.ok) {
-      return serviceFailure({
-        code: marked.error.code,
-        message: marked.error.message,
-        provider: marked.error.provider,
-        status: marked.error.status,
-        retryable: marked.error.retryable
-      });
+      emailFailures += 1;
+      continue;
     }
 
     emailedReports += 1;
@@ -104,6 +102,7 @@ export async function deliverHuntReports(
 
   return serviceSuccess({
     insertedReports: inserted.data.length,
-    emailedReports
+    emailedReports,
+    emailFailures
   });
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { serviceSuccess, type ServiceResult } from "./types";
+import { serviceFailure, serviceSuccess, type ServiceResult } from "./types";
 import { deliverHuntReports } from "./report-delivery";
 import type { HuntReportDraft } from "./hunt";
 
@@ -43,7 +43,8 @@ describe("deliverHuntReports", () => {
     }
     expect(result.data).toEqual({
       insertedReports: 1,
-      emailedReports: 1
+      emailedReports: 1,
+      emailFailures: 0
     });
     expect(sent).toEqual([
       {
@@ -80,5 +81,55 @@ describe("deliverHuntReports", () => {
     expect(result.data.insertedReports).toBe(0);
     expect(result.data.emailedReports).toBe(0);
     expect(sent).toEqual([]);
+  });
+
+  it("continues delivery when one provider email fails so feed rows stay visible", async () => {
+    const secondReport: HuntReportDraft = {
+      ...report,
+      title: "Competitor raised funding",
+      signal_hash: "signal-2",
+      alert_subject: "Strategic Alert: funding round"
+    };
+    const marked: unknown[] = [];
+    let sendAttempts = 0;
+
+    const result = await deliverHuntReports([report, secondReport], {
+      ownerEmail: "founder@example.com",
+      insertReports: async (rows) => serviceSuccess(rows.map((row, index) => ({ id: `report-${index + 1}`, signal_hash: row.signal_hash }))),
+      sendEmail: async () => {
+        sendAttempts += 1;
+        if (sendAttempts === 2) {
+          return serviceFailure({
+            code: "email_send_failed",
+            message: "provider rejected",
+            provider: "resend",
+            retryable: true
+          });
+        }
+
+        return serviceSuccess({ id: "email-1" });
+      },
+      markEmailSent: async (marker) => {
+        marked.push(marker);
+        return serviceSuccess(null);
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("Expected delivery success with partial email failure.");
+    }
+
+    expect(result.data).toEqual({
+      insertedReports: 2,
+      emailedReports: 1,
+      emailFailures: 1
+    });
+    expect(marked).toEqual([
+      {
+        reportId: "report-1",
+        emailId: "email-1"
+      }
+    ]);
   });
 });

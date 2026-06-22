@@ -62,7 +62,8 @@ export async function POST(request: Request) {
   let huntSummary = {
     scannedCompetitors: 0,
     insertedReports: 0,
-    emailedReports: 0
+    emailedReports: 0,
+    emailFailures: 0
   };
 
   if (payload.enabled && company.setup_status === "complete" && (company.competitors ?? []).length > 0) {
@@ -161,7 +162,8 @@ export async function POST(request: Request) {
     huntSummary = {
       scannedCompetitors: hunt.data.scannedCompetitors,
       insertedReports: delivery.data.insertedReports,
-      emailedReports: delivery.data.emailedReports
+      emailedReports: delivery.data.emailedReports,
+      emailFailures: delivery.data.emailFailures
     };
   }
 

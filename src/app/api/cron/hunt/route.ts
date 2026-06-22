@@ -36,7 +36,9 @@ export async function GET(request: Request) {
   const gemini = createGeminiClient();
   const tavily = createTavilyClient();
   const resend = createResendClient();
-  const reports = [];
+  let insertedReports = 0;
+  let emailedReports = 0;
+  let emailFailures = 0;
   const monitoredCompanies = companies ?? [];
 
   const ownerIds = Array.from(new Set(monitoredCompanies.map((company) => company.user_id).filter(Boolean)));
@@ -125,9 +127,17 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Could not deliver intelligence reports.", detail: delivery.error.message }, { status: 500 });
       }
 
-      reports.push(...Array.from({ length: delivery.data.insertedReports }));
+      insertedReports += delivery.data.insertedReports;
+      emailedReports += delivery.data.emailedReports;
+      emailFailures += delivery.data.emailFailures;
     }
   }
 
-  return NextResponse.json({ ok: true, reports: reports.length });
+  return NextResponse.json({
+    ok: true,
+    monitoredCompanies: monitoredCompanies.length,
+    reports: insertedReports,
+    emailedReports,
+    emailFailures
+  });
 }

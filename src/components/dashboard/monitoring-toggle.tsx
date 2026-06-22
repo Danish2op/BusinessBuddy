@@ -36,15 +36,17 @@ export function MonitoringToggle({ companyId, initialEnabled = false }: Monitori
         scannedCompetitors?: number;
         insertedReports?: number;
         emailedReports?: number;
+        emailFailures?: number;
       };
     } | null;
     if (response.ok) {
       setEnabled(next);
       const insertedReports = body?.hunt_summary?.insertedReports ?? 0;
       const emailedReports = body?.hunt_summary?.emailedReports ?? 0;
+      const emailFailures = body?.hunt_summary?.emailFailures ?? 0;
       setMessage(
         next
-          ? `Monitoring is on. First scan added ${insertedReports} feed item${insertedReports === 1 ? "" : "s"} and sent ${emailedReports} email${emailedReports === 1 ? "" : "s"}.`
+          ? `Monitoring is on. First scan added ${insertedReports} feed item${insertedReports === 1 ? "" : "s"}, sent ${emailedReports} email${emailedReports === 1 ? "" : "s"}${emailFailures ? `, and ${emailFailures} email${emailFailures === 1 ? "" : "s"} need retry` : ""}.`
           : "Monitoring is paused."
       );
       router.refresh();
