@@ -4,6 +4,8 @@ import { Check, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { CompanyLogo } from "@/components/company-logo";
+
 import { applySuggestionDecision, suggestionDecisionFor } from "./suggestion-state";
 
 type Suggestion = {
@@ -159,17 +161,7 @@ export function SetupForm({ initialCompanyId, initialSuggestions = [] }: SetupFo
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
-                    {logoUrl ? (
-                      <img
-                        alt=""
-                        className="h-10 w-10 rounded border border-[var(--border-muted)] bg-white object-contain p-1"
-                        src={logoUrl}
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded border border-[var(--border-muted)] bg-[#10161a] text-sm font-semibold text-[var(--amber)]">
-                        {suggestion.comp_name.slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
+                    <CompanyLogo name={suggestion.comp_name} website={suggestion.website} logoUrl={logoUrl} />
                     <div className="min-w-0">
                       <h3 className="font-semibold">{suggestion.comp_name}</h3>
                       {suggestion.linkedin_url && (

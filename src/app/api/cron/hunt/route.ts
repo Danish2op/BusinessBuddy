@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { deliverHuntReports } from "@/lib/agents/report-delivery";
 import { runContinuousHunt, isAuthorizedCronRequest } from "@/lib/agents/hunt";
+import { serviceFailure, serviceSuccess } from "@/lib/agents/types";
 import { getServerEnv } from "@/lib/env";
 import { createGeminiClient } from "@/lib/gemini";
 import { createResendClient } from "@/lib/resend";
@@ -72,45 +74,58 @@ export async function GET(request: Request) {
     );
 
     if (result.ok && result.data.reports.length > 0) {
-      const reportRows = result.data.reports.map(
-        ({ should_alert: _shouldAlert, alert_subject: _alertSubject, alert_body: _alertBody, ...report }) => report
-      );
-      const { data: insertedReports, error: insertError } = await supabase
-        .from("intelligence_reports")
-        .upsert(reportRows, { onConflict: "company_id,signal_hash", ignoreDuplicates: true })
-        .select("id,signal_hash");
+      const delivery = await deliverHuntReports(result.data.reports, {
+        ownerEmail,
+        insertReports: async (rows) => {
+          const { data: insertedReports, error: insertError } = await supabase
+            .from("intelligence_reports")
+            .upsert(rows, { onConflict: "company_id,signal_hash", ignoreDuplicates: true })
+            .select("id,signal_hash");
 
-      if (insertError) {
-        return NextResponse.json({ error: "Could not save intelligence reports.", detail: insertError.message }, { status: 500 });
-      }
-
-      const insertedHashes = new Set((insertedReports ?? []).map((report) => report.signal_hash));
-      reports.push(...(insertedReports ?? []));
-
-      if (ownerEmail) {
-        for (const report of result.data.reports) {
-          if (!report.should_alert || !insertedHashes.has(report.signal_hash)) {
-            continue;
+          if (insertError) {
+            return serviceFailure({
+              code: "report_insert_failed",
+              message: insertError.message,
+              provider: "supabase",
+              retryable: false
+            });
           }
 
-          const email = await resend.sendEmail({
-            to: ownerEmail,
-            subject: report.alert_subject || `Strategic Alert: ${report.title}`,
-            text: report.alert_body || report.summary
-          });
+          return serviceSuccess(insertedReports ?? []);
+        },
+        sendEmail: (email) =>
+          resend.sendEmail({
+            to: email.to,
+            subject: email.subject,
+            text: email.text
+          }),
+        markEmailSent: async ({ reportId, emailId }) => {
+          const { error: updateError } = await supabase
+            .from("intelligence_reports")
+            .update({
+              email_sent_at: new Date().toISOString(),
+              email_id: emailId
+            })
+            .eq("id", reportId);
 
-          if (email.ok) {
-            await supabase
-              .from("intelligence_reports")
-              .update({
-                email_sent_at: new Date().toISOString(),
-                email_id: email.data.id
-              })
-              .eq("company_id", company.id)
-              .eq("signal_hash", report.signal_hash);
+          if (updateError) {
+            return serviceFailure({
+              code: "report_email_mark_failed",
+              message: updateError.message,
+              provider: "supabase",
+              retryable: false
+            });
           }
+
+          return serviceSuccess(null);
         }
+      });
+
+      if (!delivery.ok) {
+        return NextResponse.json({ error: "Could not deliver intelligence reports.", detail: delivery.error.message }, { status: 500 });
       }
+
+      reports.push(...Array.from({ length: delivery.data.insertedReports }));
     }
   }
 

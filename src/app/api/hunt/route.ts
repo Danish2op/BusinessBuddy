@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { deliverHuntReports } from "@/lib/agents/report-delivery";
 import { runContinuousHunt } from "@/lib/agents/hunt";
+import { serviceFailure, serviceSuccess } from "@/lib/agents/types";
 import { createGeminiClient } from "@/lib/gemini";
 import { createResendClient } from "@/lib/resend";
 import { rejectDisallowedOrigin } from "@/lib/security/route";
@@ -49,12 +51,7 @@ export async function POST(request: Request) {
       gemini: createGeminiClient(),
       tavily: createTavilyClient(),
       resend: {
-        sendAlert: (alert) =>
-          resend.sendEmail({
-            to: user.email ?? "alerts@danis.live",
-            subject: alert.subject,
-            text: alert.text
-          })
+        sendAlert: async () => serviceSuccess({ id: "deferred-until-report-insert" })
       }
     }
   );
@@ -63,19 +60,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error.message, code: result.error.code }, { status: 400 });
   }
 
-  if (result.data.reports.length > 0) {
-    const admin = createSupabaseAdminClient();
-    const { error } = await admin
-      .from("intelligence_reports")
-      .upsert(
-        result.data.reports.map(({ should_alert: _shouldAlert, alert_subject: _alertSubject, alert_body: _alertBody, ...report }) => report),
-        { onConflict: "company_id,signal_hash", ignoreDuplicates: true }
-      );
+  const admin = createSupabaseAdminClient();
+  const delivery = await deliverHuntReports(result.data.reports, {
+    ownerEmail: user.email,
+    insertReports: async (rows) => {
+      const { data: inserted, error } = await admin
+        .from("intelligence_reports")
+        .upsert(rows, { onConflict: "company_id,signal_hash", ignoreDuplicates: true })
+        .select("id,signal_hash");
 
-    if (error) {
-      return NextResponse.json({ error: "Could not save intelligence reports." }, { status: 500 });
+      if (error) {
+        return serviceFailure({
+          code: "report_insert_failed",
+          message: error.message,
+          provider: "supabase",
+          retryable: false
+        });
+      }
+
+      return serviceSuccess(inserted ?? []);
+    },
+    sendEmail: (email) =>
+      resend.sendEmail({
+        to: email.to,
+        subject: email.subject,
+        text: email.text
+      }),
+    markEmailSent: async ({ reportId, emailId }) => {
+      const { error } = await admin
+        .from("intelligence_reports")
+        .update({
+          email_sent_at: new Date().toISOString(),
+          email_id: emailId
+        })
+        .eq("id", reportId);
+
+      if (error) {
+        return serviceFailure({
+          code: "report_email_mark_failed",
+          message: error.message,
+          provider: "supabase",
+          retryable: false
+        });
+      }
+
+      return serviceSuccess(null);
     }
+  });
+
+  if (!delivery.ok) {
+    return NextResponse.json({ error: delivery.error.message, code: delivery.error.code }, { status: 400 });
   }
 
-  return NextResponse.json(result.data);
+  return NextResponse.json({
+    ...result.data,
+    delivery: delivery.data
+  });
 }

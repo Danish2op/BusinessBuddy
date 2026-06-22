@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Pause, Play } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type MonitoringToggleProps = {
@@ -9,6 +10,7 @@ type MonitoringToggleProps = {
 };
 
 export function MonitoringToggle({ companyId, initialEnabled = false }: MonitoringToggleProps) {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -27,12 +29,27 @@ export function MonitoringToggle({ companyId, initialEnabled = false }: Monitori
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyId, enabled: next })
     });
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    const body = (await response.json().catch(() => null)) as {
+      error?: string;
+      detail?: string;
+      hunt_summary?: {
+        scannedCompetitors?: number;
+        insertedReports?: number;
+        emailedReports?: number;
+      };
+    } | null;
     if (response.ok) {
       setEnabled(next);
-      setMessage(next ? "Monitoring is on." : "Monitoring is paused.");
+      const insertedReports = body?.hunt_summary?.insertedReports ?? 0;
+      const emailedReports = body?.hunt_summary?.emailedReports ?? 0;
+      setMessage(
+        next
+          ? `Monitoring is on. First scan added ${insertedReports} feed item${insertedReports === 1 ? "" : "s"} and sent ${emailedReports} email${emailedReports === 1 ? "" : "s"}.`
+          : "Monitoring is paused."
+      );
+      router.refresh();
     } else {
-      setMessage(body?.error ?? "Could not update monitoring.");
+      setMessage(body?.detail ?? body?.error ?? "Could not update monitoring.");
     }
     setPending(false);
   }

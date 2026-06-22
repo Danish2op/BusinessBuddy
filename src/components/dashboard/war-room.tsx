@@ -1,6 +1,7 @@
 import { Activity, AlertTriangle, ExternalLink, Radar, Shield, Target } from "lucide-react";
 
 import { AdvisorChat } from "@/components/advisor/advisor-chat";
+import { CompanyLogo } from "@/components/company-logo";
 import { CompetitorForm } from "@/components/dashboard/competitor-form";
 import { MonitoringToggle } from "@/components/dashboard/monitoring-toggle";
 import { WebsiteIntelButton } from "@/components/dashboard/website-intel-button";
@@ -55,10 +56,10 @@ export function WarRoom({
 
   return (
     <main className="min-h-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(214,166,64,0.11),transparent_26%),linear-gradient(135deg,rgba(143,191,99,0.05),transparent_40%)]" />
+      <div className="pointer-events-none fixed inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px]" />
       <section className="relative mx-auto grid min-h-screen max-w-[1680px] gap-5 p-4 lg:p-6 xl:grid-cols-[minmax(0,1fr)_430px]">
         <div className="grid min-w-0 content-start gap-5">
-          <header className="rounded-md border border-[var(--border-strong)] bg-[rgba(8,13,15,0.88)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.3)]">
+          <header className="glass-panel rounded-md p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="mb-4 flex items-center gap-2 text-sm font-semibold">
@@ -78,15 +79,15 @@ export function WarRoom({
               </div>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <div className="rounded border border-[var(--border-muted)] bg-[#05090a] p-3">
+              <div className="glass-tile rounded p-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Watch targets</p>
                 <p className="mt-2 text-2xl font-semibold">{competitors.length}</p>
               </div>
-              <div className="rounded border border-[var(--border-muted)] bg-[#05090a] p-3">
+              <div className="glass-tile rounded p-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Active threats</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--amber)]">{activeThreats}</p>
               </div>
-              <div className="rounded border border-[var(--border-muted)] bg-[#05090a] p-3">
+              <div className="glass-tile rounded p-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Last scan</p>
                 <p className="mt-2 inline-flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                   <Activity size={15} className="text-[var(--green)]" />
@@ -97,7 +98,7 @@ export function WarRoom({
           </header>
 
           <div className="grid gap-5 2xl:grid-cols-[0.9fr_1.1fr]">
-            <section className="rounded-md border border-[var(--border-strong)] bg-[var(--bg-panel)] p-5">
+            <section className="glass-panel rounded-md p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Shield size={18} className="text-[var(--green)]" />
                 <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Strategic Summary</h2>
@@ -111,7 +112,7 @@ export function WarRoom({
                   <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">Website intel</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{knowledgeBlock.summary}</p>
                   {knowledgeBlock.positioning && (
-                    <p className="mt-3 rounded border border-[var(--border-muted)] bg-[#05090a] p-3 text-xs text-[var(--text-muted)]">
+                    <p className="glass-tile mt-3 rounded p-3 text-xs text-[var(--text-muted)]">
                       Positioning: {knowledgeBlock.positioning}
                     </p>
                   )}
@@ -119,7 +120,7 @@ export function WarRoom({
               )}
             </section>
 
-            <section className="rounded-md border border-[var(--border-strong)] bg-[var(--bg-panel)] p-5">
+            <section className="glass-panel rounded-md p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={18} className="text-[var(--amber)]" />
@@ -129,24 +130,19 @@ export function WarRoom({
               </div>
               <div className="grid gap-3">
                 {competitors.length === 0 && (
-                  <p className="rounded border border-[var(--border-muted)] p-3 text-sm text-[var(--text-muted)]">
-                    No competitors yet. Add a real company below with a website or LinkedIn URL.
-                  </p>
+                  <div className="glass-row rounded p-5 text-sm text-[var(--text-muted)]">
+                    <p className="font-medium text-[var(--text-secondary)]">No radar targets yet</p>
+                    <p className="mt-2 leading-6">Add a real competitor below, or finish onboarding discovery, to arm the monitoring feed.</p>
+                  </div>
                 )}
                 {competitors.map((competitor) => (
-                  <div key={competitor.id} className="grid gap-3 rounded border border-[var(--border-muted)] bg-[#05090a] p-3 md:grid-cols-[1fr_auto]">
+                  <div key={competitor.id} className="glass-row grid gap-3 rounded p-3 md:grid-cols-[1fr_auto]">
                     <div className="flex min-w-0 items-start gap-3">
-                      {competitor.knowledge_block?.logo_url ? (
-                        <img
-                          alt=""
-                          className="h-10 w-10 rounded border border-[var(--border-muted)] bg-white object-contain p-1"
-                          src={competitor.knowledge_block.logo_url}
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[var(--border-muted)] bg-[#10161a] text-xs font-semibold text-[var(--amber)]">
-                          {competitor.comp_name.slice(0, 1).toUpperCase()}
-                        </div>
-                      )}
+                      <CompanyLogo
+                        name={competitor.comp_name}
+                        website={competitor.website}
+                        logoUrl={competitor.knowledge_block?.logo_url}
+                      />
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{competitor.comp_name}</p>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
@@ -178,15 +174,22 @@ export function WarRoom({
 
           <CompetitorForm companyId={companyId} />
 
-          <section className="rounded-md border border-[var(--border-strong)] bg-[var(--bg-panel)] p-5">
+          <section className="glass-panel rounded-md p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Intelligence Feed</h2>
               <span className="text-xs text-[var(--text-muted)]">{reports.length} signals</span>
             </div>
             <div className="grid gap-3">
-              {reports.length === 0 && <p className="text-sm text-[var(--text-muted)]">No reports yet.</p>}
+              {reports.length === 0 && (
+                <div className="glass-row rounded p-5">
+                  <p className="text-sm font-medium text-[var(--text-secondary)]">Feed arms on first scan</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                    Turn monitoring on to run the first hunt immediately. New signals will appear here and email the account owner.
+                  </p>
+                </div>
+              )}
               {reports.map((report) => (
-                <div key={report.id} className="rounded border border-[var(--border-muted)] bg-[#05090a] p-3 text-sm text-[var(--text-secondary)]">
+                <div key={report.id} className="glass-row rounded p-3 text-sm text-[var(--text-secondary)]">
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                     <span className="text-[var(--amber)]">{report.category}</span>
                     {report.risk_level && <span>Risk: {report.risk_level}</span>}

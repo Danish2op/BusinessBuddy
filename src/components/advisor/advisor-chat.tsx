@@ -74,8 +74,8 @@ export function AdvisorChat({ companyId, embedded = false }: AdvisorChatProps) {
     <section
       className={
         embedded
-          ? "advisor-panel grid h-full min-h-[520px] rounded-md border border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(14,24,23,0.96),rgba(6,10,11,0.98))] shadow-[0_0_0_1px_rgba(225,179,74,0.08)]"
-          : "advisor-panel w-[min(92vw,420px)] rounded-md border border-[var(--border-strong)] bg-[var(--bg-panel)] p-4 shadow-2xl"
+          ? "advisor-panel glass-panel grid h-full min-h-[520px] rounded-md"
+          : "advisor-panel glass-panel w-[min(92vw,420px)] rounded-md p-4 shadow-2xl"
       }
     >
       <div className={embedded ? "border-b border-[var(--border-muted)] p-4" : "mb-3 flex items-center justify-between"}>
@@ -95,7 +95,7 @@ export function AdvisorChat({ companyId, embedded = false }: AdvisorChatProps) {
         )}
       </div>
       <div className={embedded ? "grid min-h-0 grid-rows-[1fr_auto] gap-3 p-4" : ""}>
-        <div className="max-h-[420px] min-h-[260px] overflow-y-auto rounded border border-[var(--border-muted)] bg-[#05090a] p-3 text-sm text-[var(--text-secondary)]">
+        <div className="glass-row max-h-[420px] min-h-[260px] overflow-y-auto rounded p-3 text-sm text-[var(--text-secondary)]">
           {messages.length === 0 && (
             <div className="grid h-full place-items-center text-center text-[var(--text-muted)]">
               <div>
@@ -132,7 +132,7 @@ export function AdvisorChat({ companyId, embedded = false }: AdvisorChatProps) {
         <div className="mt-3 flex gap-2">
           <input
             aria-label="Advisor message"
-            className="min-w-0 flex-1 rounded-md border border-[var(--border-muted)] bg-[#05090a] px-3 py-3 text-sm outline-none transition focus:border-[var(--amber)]"
+            className="min-w-0 flex-1 rounded-md border border-[var(--border-muted)] bg-[rgba(3,7,8,0.72)] px-3 py-3 text-sm outline-none transition focus:border-[var(--amber)]"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             placeholder={companyId ? "Ask the advisor..." : "Complete setup to enable advisor"}

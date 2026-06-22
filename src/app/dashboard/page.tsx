@@ -14,7 +14,7 @@ export default async function DashboardPage() {
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id,name,moat_description,monitoring_enabled,setup_status,ai_generated_profile,competitors(id,comp_name,website,linkedin_url,knowledge_block,analysis_summary,risk_level),intelligence_reports(id,title,summary,category,risk_level,source_url,created_at)")
+    .select("id,name,moat_description,monitoring_enabled,setup_status,ai_generated_profile,competitors(id,comp_name,website,linkedin_url,knowledge_block,analysis_summary,risk_level)")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -35,6 +35,13 @@ export default async function DashboardPage() {
     | null
     | undefined;
 
+  const { data: reports } = await supabase
+    .from("intelligence_reports")
+    .select("id,title,summary,category,risk_level,source_url,created_at")
+    .eq("company_id", company.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
   return (
     <WarRoom
       companyId={company?.id}
@@ -43,7 +50,7 @@ export default async function DashboardPage() {
       monitoringEnabled={company.monitoring_enabled === true}
       knowledgeBlock={profile?.website_knowledge_block}
       competitors={company?.competitors ?? []}
-      reports={company?.intelligence_reports ?? []}
+      reports={reports ?? []}
     />
   );
 }
