@@ -7,6 +7,8 @@ import {
   Bot,
   ExternalLink,
   LayoutDashboard,
+  Loader2,
+  Mail,
   Radar,
   Rss,
   Shield,
@@ -113,6 +115,8 @@ export function WarRoom({
   advisorMessages = []
 }: WarRoomProps) {
   const [activePage, setActivePage] = useState<DashboardPage>("overview");
+  const [mailingReportId, setMailingReportId] = useState<string | null>(null);
+  const [mailMessage, setMailMessage] = useState<{ reportId: string; type: "success" | "error"; text: string } | null>(null);
   const activeThreats = competitors.filter((competitor) => competitor.risk_level === "high" || competitor.risk_level === "med").length;
   const highRiskReports = reports.filter((report) => report.risk_level === "high").length;
   const lastSignal = reports[0]?.created_at
@@ -127,6 +131,30 @@ export function WarRoom({
     }),
     [activeThreats, advisorMessages.length, competitors.length, reports.length]
   );
+
+  async function mailReport(report: DashboardReport) {
+    const reportId = report.id;
+    setMailingReportId(reportId);
+    setMailMessage(null);
+
+    try {
+      const response = await fetch(`/api/reports/${report.id}/email`, { method: "POST" });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(body?.error || "Could not email this feed brief.");
+      }
+
+      setMailMessage({ reportId, type: "success", text: "Feed brief emailed." });
+    } catch (error) {
+      setMailMessage({
+        reportId,
+        type: "error",
+        text: error instanceof Error ? error.message : "Could not email this feed brief."
+      });
+    } finally {
+      setMailingReportId(null);
+    }
+  }
 
   return (
     <main className="dashboard-shell h-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)]">
@@ -308,10 +336,26 @@ export function WarRoom({
                       </div>
                       {report.title ? <p className="font-medium text-[var(--text-primary)]">{report.title}</p> : null}
                       <p className="mt-1 leading-6">{report.summary}</p>
-                      {report.source_url && (
-                        <a className="mt-3 inline-flex items-center gap-1 text-xs text-[var(--green)] hover:underline" href={report.source_url} rel="noreferrer" target="_blank">
-                          Source <ExternalLink size={12} />
-                        </a>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {report.source_url && (
+                          <a className="inline-flex items-center gap-1 rounded border border-[var(--border-muted)] px-2 py-1 text-xs text-[var(--green)] hover:border-[var(--green)]" href={report.source_url} rel="noreferrer" target="_blank">
+                            Source <ExternalLink size={12} />
+                          </a>
+                        )}
+                        <button
+                          className="inline-flex items-center gap-1 rounded border border-[rgba(224,173,66,0.28)] px-2 py-1 text-xs text-[var(--amber)] transition hover:border-[var(--amber)] disabled:cursor-wait disabled:opacity-60"
+                          disabled={mailingReportId === report.id}
+                          onClick={() => mailReport(report)}
+                          type="button"
+                        >
+                          {mailingReportId === report.id ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+                          {mailingReportId === report.id ? "mailing..." : "mail this to me"}
+                        </button>
+                      </div>
+                      {mailMessage?.reportId === report.id && (
+                        <p className={`mt-2 text-xs ${mailMessage.type === "success" ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
+                          {mailMessage.text}
+                        </p>
                       )}
                     </article>
                   ))}

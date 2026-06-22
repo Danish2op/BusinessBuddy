@@ -9,6 +9,15 @@ type InsertedReport = {
   signal_hash: string;
 };
 
+type ReportEmailInput = {
+  title?: string | null;
+  summary: string;
+  source_url?: string | null;
+  category: string;
+  risk_level?: "low" | "med" | "high" | null;
+  alert_body?: string | null;
+};
+
 type DeliverHuntReportsDependencies = {
   ownerEmail?: string | null;
   insertReports(rows: ReportInsertRow[]): Promise<ServiceResult<InsertedReport[]>>;
@@ -29,12 +38,20 @@ function toInsertRow(report: HuntReportDraft): ReportInsertRow {
   return row;
 }
 
-function emailTextFor(report: HuntReportDraft): string {
+function riskLabel(risk: ReportEmailInput["risk_level"]): "low" | "med" | "high" {
+  return risk ?? "low";
+}
+
+function emailTextFor(report: ReportEmailInput): string {
+  const body = report.alert_body || report.summary;
   return [
-    report.alert_body || report.summary,
+    report.title ? `BusinessBuddy brief: ${report.title}` : "BusinessBuddy feed brief",
     "",
+    body,
+    "",
+    `Impact: This signal may change how buyers compare your moat against a rival offer.`,
+    "Suggested action: Review the move against your moat, then decide whether to respond aggressively, defend your current positioning, or pivot toward a less-contested segment.",
     report.source_url ? `Source: ${report.source_url}` : "",
-    "Advisor suggestion: Review the move against your moat, then decide whether to respond aggressively, defend your current positioning, or pivot toward a less-contested segment."
   ]
     .filter(Boolean)
     .join("\n");
@@ -48,7 +65,7 @@ function escapeHtml(value: string | null | undefined): string {
     .replaceAll('"', "&quot;");
 }
 
-function riskColor(risk: HuntReportDraft["risk_level"]) {
+function riskColor(risk: ReportEmailInput["risk_level"]) {
   if (risk === "high") {
     return "#ef756d";
   }
@@ -60,13 +77,17 @@ function riskColor(risk: HuntReportDraft["risk_level"]) {
   return "#8fbf63";
 }
 
-function emailHtmlFor(report: HuntReportDraft): string {
-  const title = escapeHtml(report.title);
+function emailHtmlFor(report: ReportEmailInput, mode: "automated" | "manual"): string {
+  const title = escapeHtml(report.title || "Intelligence feed brief");
   const summary = escapeHtml(report.alert_body || report.summary).replaceAll("\n", "<br />");
   const sourceUrl = report.source_url ? escapeHtml(report.source_url) : "";
   const category = escapeHtml(report.category);
-  const risk = escapeHtml(report.risk_level.toUpperCase());
+  const risk = escapeHtml(riskLabel(report.risk_level).toUpperCase());
   const color = riskColor(report.risk_level);
+  const label = mode === "manual" ? "BusinessBuddy Feed Brief" : "BusinessBuddy Strategic Alert";
+  const footer = mode === "manual"
+    ? "Sent by BusinessBuddy because you requested this feed brief from your War-Room."
+    : "Sent by BusinessBuddy because monitoring is enabled for this company. Feed entry is saved in your War-Room.";
 
   return `<!doctype html>
 <html>
@@ -77,7 +98,7 @@ function emailHtmlFor(report: HuntReportDraft): string {
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border:1px solid rgba(168,188,175,0.24);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02)),#0d1618;box-shadow:0 28px 90px rgba(0,0,0,0.42);overflow:hidden;">
             <tr>
               <td style="padding:26px 28px;border-bottom:1px solid rgba(91,116,119,0.28);">
-                <div style="font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#d6a640;">BusinessBuddy Strategic Alert</div>
+                <div style="font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#d6a640;">${label}</div>
                 <h1 style="margin:12px 0 0;font-size:26px;line-height:1.18;color:#f2f5ed;">${title}</h1>
               </td>
             </tr>
@@ -90,8 +111,11 @@ function emailHtmlFor(report: HuntReportDraft): string {
                 <div style="border:1px solid rgba(91,116,119,0.28);border-radius:14px;background:rgba(3,7,8,0.55);padding:18px;color:#c3ccc2;font-size:15px;line-height:1.65;">
                   ${summary}
                 </div>
+                <div style="margin-top:18px;border-left:3px solid #d6a640;padding:12px 14px;background:rgba(214,166,64,0.08);color:#c3ccc2;font-size:14px;line-height:1.55;">
+                  <strong style="color:#f2f5ed;">Impact on your moat:</strong> This signal may change how buyers compare your positioning, price, or proof against a rival offer.
+                </div>
                 <div style="margin-top:18px;border-left:3px solid #8fbf63;padding:12px 14px;background:rgba(143,191,99,0.08);color:#c3ccc2;font-size:14px;line-height:1.55;">
-                  <strong style="color:#f2f5ed;">Advisor suggestion:</strong> Review this move against your moat, then choose aggressive response, defensive positioning, or pivot toward a less-contested segment.
+                  <strong style="color:#f2f5ed;">Suggested action:</strong> Review this move against your moat, then choose aggressive response, defensive positioning, or pivot toward a less-contested segment.
                 </div>
                 ${
                   sourceUrl
@@ -102,7 +126,7 @@ function emailHtmlFor(report: HuntReportDraft): string {
             </tr>
             <tr>
               <td style="padding:18px 28px;border-top:1px solid rgba(91,116,119,0.28);color:#79867f;font-size:12px;line-height:1.6;">
-                Sent by BusinessBuddy because monitoring is enabled for this company. Feed entry is saved in your War-Room.
+                ${footer}
               </td>
             </tr>
           </table>
@@ -111,6 +135,18 @@ function emailHtmlFor(report: HuntReportDraft): string {
     </table>
   </body>
 </html>`;
+}
+
+export function buildReportEmail(
+  report: ReportEmailInput,
+  options: { mode: "automated" | "manual"; subject?: string }
+): { subject: string; text: string; html: string } {
+  const title = report.title || "Intelligence feed brief";
+  return {
+    subject: options.subject || (options.mode === "manual" ? `BusinessBuddy Feed Brief: ${title}` : `Strategic Alert: ${title}`),
+    text: emailTextFor(report),
+    html: emailHtmlFor(report, options.mode)
+  };
 }
 
 export async function deliverHuntReports(
@@ -150,11 +186,15 @@ export async function deliverHuntReports(
       continue;
     }
 
+    const reportEmail = buildReportEmail(report, {
+      mode: "automated",
+      subject: report.alert_subject || `Strategic Alert: ${report.title}`
+    });
     const email = await dependencies.sendEmail({
       to: ownerEmail,
-      subject: report.alert_subject || `Strategic Alert: ${report.title}`,
-      text: emailTextFor(report),
-      html: emailHtmlFor(report)
+      subject: reportEmail.subject,
+      text: reportEmail.text,
+      html: reportEmail.html
     });
 
     if (!email.ok) {

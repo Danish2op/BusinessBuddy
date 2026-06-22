@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { serviceFailure, serviceSuccess, type ServiceResult } from "./types";
-import { deliverHuntReports } from "./report-delivery";
+import { buildReportEmail, deliverHuntReports } from "./report-delivery";
 import type { HuntReportDraft } from "./hunt";
 
 describe("deliverHuntReports", () => {
@@ -132,5 +132,26 @@ describe("deliverHuntReports", () => {
         emailId: "email-1"
       }
     ]);
+  });
+
+  it("builds a branded manual feed email with impact and suggested action", () => {
+    const email = buildReportEmail(
+      {
+        title: report.title,
+        summary: report.summary,
+        source_url: report.source_url,
+        category: report.category,
+        risk_level: report.risk_level,
+        alert_body: report.alert_body
+      },
+      { mode: "manual" }
+    );
+
+    expect(email.subject).toBe("BusinessBuddy Feed Brief: Competitor launched a free plan");
+    expect(email.text).toContain("Impact:");
+    expect(email.text).toContain("Suggested action:");
+    expect(email.html).toContain("BusinessBuddy Feed Brief");
+    expect(email.html).toContain("Impact on your moat");
+    expect(email.html).toContain("Suggested action");
   });
 });

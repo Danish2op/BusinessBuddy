@@ -49,4 +49,11 @@ describe("WarRoom source", () => {
     expect(source).toContain("feed-scroll");
     expect(source).toContain("radar-scroll");
   });
+
+  it("lets users manually email any feed item with visible sending feedback", () => {
+    expect(source).toContain("mail this to me");
+    expect(source).toContain("/api/reports/${report.id}/email");
+    expect(source).toContain("mailingReportId");
+    expect(source).toContain("Feed brief emailed");
+  });
 });
