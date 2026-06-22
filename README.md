@@ -4,7 +4,7 @@
 
 BusinessBuddy moves competitive research from a manual chore to a push-based autonomous workflow. It maps your company's moat, discovers real competitors, continuously scans the market, and delivers high-impact war-room updates, strategic email briefs, and real-time response advice.
 
-[GitHub Repository](https://github.com/Danish2op/BusinessBuddy) · [Live Demo](https://businessbuddy.danis.live)
+[GitHub Repository](https://github.com/Danish2op/BusinessBuddy) · [Live Demo](https://businessbuddy.danis.live/auth)
 
 ---
 
