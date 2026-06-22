@@ -1,4 +1,5 @@
 import { WarRoom } from "@/components/dashboard/war-room";
+import type { ChatMessage } from "@/components/advisor/advisor-chat";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -42,6 +43,21 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false })
     .limit(30);
 
+  const { data: advisorMessages } = await supabase
+    .from("advisor_messages")
+    .select("role,content,citations")
+    .eq("company_id", company.id)
+    .order("created_at", { ascending: true })
+    .limit(40);
+
+  const chatHistory: ChatMessage[] = (advisorMessages ?? [])
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+      citations: Array.isArray(message.citations) ? message.citations.filter((citation): citation is string => typeof citation === "string") : []
+    }));
+
   return (
     <WarRoom
       companyId={company?.id}
@@ -51,6 +67,7 @@ export default async function DashboardPage() {
       knowledgeBlock={profile?.website_knowledge_block}
       competitors={company?.competitors ?? []}
       reports={reports ?? []}
+      advisorMessages={chatHistory}
     />
   );
 }

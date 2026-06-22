@@ -11,6 +11,11 @@ describe("AdvisorChat source", () => {
     expect(source).toContain("Citations");
   });
 
+  it("hydrates stored advisor messages from the dashboard", () => {
+    expect(source).toContain("initialMessages");
+    expect(source).toContain("useState<ChatMessage[]>(initialMessages)");
+  });
+
   it("explains setup-required disabled state", () => {
     expect(source).toContain("Complete setup to enable advisor chat.");
   });

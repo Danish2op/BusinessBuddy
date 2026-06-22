@@ -25,6 +25,13 @@ describe("WarRoom source", () => {
     expect(source).toContain("<AdvisorChat");
   });
 
+  it("uses a real dashboard rail with page switching and logout", () => {
+    expect(source).toContain("useState<DashboardPage>");
+    expect(source).toContain("navigationItems");
+    expect(source).toContain("LogoutButton");
+    expect(source).toContain("setActivePage");
+  });
+
   it("labels risk as status instead of rendering a clickable-looking text pill", () => {
     expect(source).toContain("Risk:");
     expect(source).not.toContain("{competitor.risk_level}</span>");
