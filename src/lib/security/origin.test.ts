@@ -11,10 +11,20 @@ describe("isAllowedRequestOrigin", () => {
     ).toBe(true);
   });
 
+  it("accepts same-origin writes from the actual deployed alias host", () => {
+    expect(
+      isAllowedRequestOrigin(new Headers({ origin: "https://businessbuddy.danis.live" }), {
+        appUrl: "https://project-y550t.vercel.app",
+        requestUrl: "https://businessbuddy.danis.live/api/monitoring"
+      })
+    ).toBe(true);
+  });
+
   it("rejects cross-origin writes", () => {
     expect(
       isAllowedRequestOrigin(new Headers({ origin: "https://evil.example" }), {
-        appUrl: "https://project-y550t.vercel.app"
+        appUrl: "https://project-y550t.vercel.app",
+        requestUrl: "https://businessbuddy.danis.live/api/monitoring"
       })
     ).toBe(false);
   });

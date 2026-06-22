@@ -5,7 +5,7 @@ import { isAllowedRequestOrigin } from "@/lib/security/origin";
 
 export function rejectDisallowedOrigin(request: Request) {
   const env = getServerEnv();
-  if (isAllowedRequestOrigin(request.headers, { appUrl: env.NEXT_PUBLIC_APP_URL })) {
+  if (isAllowedRequestOrigin(request.headers, { appUrl: env.NEXT_PUBLIC_APP_URL, requestUrl: request.url })) {
     return null;
   }
 
