@@ -16,9 +16,9 @@ describe("auth experience source", () => {
   });
 
   it("renders product meaning and an animated brand scene on the auth page", () => {
-    expect(authPage).toContain("Your market moves while you sleep");
-    expect(authPage).toContain("auth-orbit");
-    expect(authPage).toContain("orbit-node");
-    expect(authPage).toContain("BusinessBuddy maps your moat");
+    expect(authPage).toContain("Know the move before it becomes the threat.");
+    expect(authPage).toContain("auth-intel-object");
+    expect(authPage).toContain("intel-node");
+    expect(authPage).toContain("Map your moat, monitor rivals");
   });
 });
