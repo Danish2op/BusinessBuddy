@@ -9,7 +9,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 export function AuthForm() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
-  const [checkEmail, setCheckEmail] = useState(false);
+  const [messageType, setMessageType] = useState<"error" | "success">("error");
   const [pending, setPending] = useState(false);
   const [pendingAction, setPendingAction] = useState<"login" | "signup" | null>(null);
   const router = useRouter();
@@ -18,6 +18,7 @@ export function AuthForm() {
     setPending(true);
     setPendingAction(mode);
     setMessage("");
+    setMessageType("error");
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const supabase = createSupabaseBrowserClient();
@@ -33,41 +34,27 @@ export function AuthForm() {
             }
           });
 
-    setPending(false);
-    setPendingAction(null);
-
     if (result.error) {
+      setPending(false);
+      setPendingAction(null);
+      setMessageType("error");
       setMessage(result.error.message);
       return;
     }
 
     if (mode === "signup" && !result.data.session) {
-      setCheckEmail(true);
-      setMessage(`Check ${email} to verify your account.`);
+      setPending(false);
+      setPendingAction(null);
+      setMode("login");
+      setMessageType("success");
+      setMessage(`Verification email sent to ${email}. Open the link, then log in here.`);
       return;
     }
 
+    setMessageType("success");
+    setMessage(mode === "login" ? "Authenticated. Opening your war-room..." : "Account ready. Opening setup...");
     router.push(mode === "login" ? "/dashboard" : "/setup");
     router.refresh();
-  }
-
-  if (checkEmail) {
-    return (
-      <div className="auth-card glass-panel animate-rise rounded-md p-6">
-        <div className="grid h-12 w-12 place-items-center rounded-md border border-[rgba(143,191,99,0.35)] bg-[rgba(143,191,99,0.12)] text-[var(--green)]">
-          <CheckCircle2 size={23} />
-        </div>
-        <p className="mt-5 text-xs uppercase tracking-[0.18em] text-[var(--amber)]">Verify email</p>
-        <h2 className="mt-3 text-2xl font-semibold">Open the confirmation link</h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-          We sent your Supabase confirmation email. After verification, BusinessBuddy will continue setup.
-        </p>
-        {message && <p className="mt-4 text-sm text-[var(--green)]">{message}</p>}
-        <button className="action-secondary mt-5" onClick={() => setCheckEmail(false)} type="button">
-          Back to login
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -88,7 +75,10 @@ export function AuthForm() {
                 : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)] hover:text-[var(--text-primary)]"
             } disabled:cursor-not-allowed disabled:opacity-50`}
             disabled={pending}
-            onClick={() => setMode(nextMode)}
+            onClick={() => {
+              setMode(nextMode);
+              setMessage("");
+            }}
             type="button"
           >
             {nextMode === "login" ? "Login" : "Signup"}
@@ -102,6 +92,7 @@ export function AuthForm() {
           <input
             autoComplete="email"
             className="rounded-xl border border-[var(--border-muted)] bg-[rgba(3,7,8,0.7)] px-3 py-3 text-[var(--text-primary)] transition placeholder:text-[var(--text-muted)] focus:border-[rgba(224,173,66,0.55)]"
+            disabled={pending}
             name="email"
             placeholder="founder@company.com"
             required
@@ -113,6 +104,7 @@ export function AuthForm() {
           <input
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             className="rounded-xl border border-[var(--border-muted)] bg-[rgba(3,7,8,0.7)] px-3 py-3 text-[var(--text-primary)] transition focus:border-[rgba(224,173,66,0.55)]"
+            disabled={pending}
             minLength={6}
             name="password"
             required
@@ -128,7 +120,16 @@ export function AuthForm() {
             {pendingAction === "login" ? "Authenticating credentials and loading your war-room..." : "Creating profile and preparing company setup..."}
           </p>
         )}
-        {message && <p className="text-sm text-[var(--red)]">{message}</p>}
+        {message && (
+          <p className={`inline-flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${
+            messageType === "success"
+              ? "border-[rgba(143,191,99,0.28)] bg-[rgba(143,191,99,0.08)] text-[var(--green)]"
+              : "border-[rgba(208,97,88,0.28)] bg-[rgba(208,97,88,0.08)] text-[var(--red)]"
+          }`}>
+            {messageType === "success" && <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}
+            <span>{message}</span>
+          </p>
+        )}
       </form>
     </div>
   );

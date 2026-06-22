@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const competitorForm = readFileSync(join(__dirname, "competitor-form.tsx"), "utf8");
 const monitoringToggle = readFileSync(join(__dirname, "monitoring-toggle.tsx"), "utf8");
 const websiteIntelButton = readFileSync(join(__dirname, "website-intel-button.tsx"), "utf8");
+const logoutButton = readFileSync(join(__dirname, "logout-button.tsx"), "utf8");
 
 describe("dashboard button feedback", () => {
   it("manual competitor add shows server-provided errors and clears on success", () => {
@@ -22,5 +23,11 @@ describe("dashboard button feedback", () => {
   it("website intel displays server-provided errors", () => {
     expect(websiteIntelButton).toContain("await response.json()");
     expect(websiteIntelButton).toContain("body?.error");
+  });
+
+  it("logout shows animated pending state and reports sign-out failures", () => {
+    expect(logoutButton).toContain("Loader2");
+    expect(logoutButton).toContain("animate-spin");
+    expect(logoutButton).toContain("Could not sign out");
   });
 });

@@ -13,6 +13,14 @@ describe("auth experience source", () => {
     expect(source).toContain("Creating profile...");
     expect(source).toContain("Authenticating credentials and loading your war-room...");
     expect(source).toContain("disabled={pending}");
+    expect(source).toContain("disabled={pending}");
+  });
+
+  it("returns signup users to the login form after sending verification email", () => {
+    expect(source).toContain("setMode(\"login\")");
+    expect(source).toContain("Verification email sent");
+    expect(source).not.toContain("setCheckEmail(true)");
+    expect(source).not.toContain("Back to login");
   });
 
   it("renders product meaning and an animated brand scene on the auth page", () => {
