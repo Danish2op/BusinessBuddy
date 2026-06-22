@@ -75,13 +75,13 @@ export function AdvisorChat({ companyId, embedded = false, initialMessages = [] 
     <section
       className={
         embedded
-          ? "advisor-panel glass-panel grid h-full min-h-[620px] rounded-md"
-          : "advisor-panel glass-panel w-[min(92vw,420px)] rounded-md p-4 shadow-2xl"
+          ? "advisor-panel glass-panel grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] rounded-2xl"
+          : "advisor-panel glass-panel w-[min(92vw,420px)] rounded-2xl p-4 shadow-2xl"
       }
     >
       <div className={embedded ? "border-b border-[var(--border-muted)] p-5" : "mb-3 flex items-center justify-between"}>
         <div className="flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-md border border-[rgba(214,166,64,0.28)] bg-[rgba(214,166,64,0.1)]">
+          <div className="grid h-10 w-10 place-items-center rounded-md border border-[rgba(214,166,64,0.28)] bg-[rgba(214,166,64,0.1)] shadow-[0_0_28px_rgba(214,166,64,0.1)]">
             <MessageSquare size={18} className="text-[var(--amber)]" />
           </div>
           <div>
@@ -97,21 +97,24 @@ export function AdvisorChat({ companyId, embedded = false, initialMessages = [] 
           </button>
         )}
       </div>
-      <div className={embedded ? "grid min-h-0 grid-rows-[1fr_auto] gap-3 p-5" : ""}>
-        <div className="advisor-scroll glass-row max-h-[58vh] min-h-[360px] overflow-y-auto rounded p-3 text-sm text-[var(--text-secondary)]">
+      <div className={embedded ? "grid min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 p-5" : ""}>
+        <div className={`advisor-scroll glass-row overflow-y-auto rounded-xl p-3 text-sm text-[var(--text-secondary)] ${embedded ? "min-h-0" : "max-h-[58vh] min-h-[360px]"}`}>
           {messages.length === 0 && (
-            <div className="grid h-full place-items-center text-center text-[var(--text-muted)]">
-              <div>
+            <div className="grid h-full min-h-[360px] place-items-center text-center text-[var(--text-muted)]">
+              <div className="max-w-sm">
+                <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border border-[rgba(214,166,64,0.28)] bg-[rgba(214,166,64,0.08)]">
+                  <MessageSquare size={22} className="text-[var(--amber)]" />
+                </div>
                 <p className="text-sm text-[var(--text-secondary)]">No advisor thread yet.</p>
-                <p className="mt-2 text-xs">Try: "How should we position against our strongest rival?"</p>
+                <p className="mt-2 text-xs leading-5">Ask about positioning, pricing response, competitor moves, or where to attack next.</p>
               </div>
             </div>
           )}
           {messages.map((item, index) => (
-            <div key={`${item.role}-${index}`} className={`animate-rise mb-3 whitespace-pre-wrap rounded-md border p-3 last:mb-0 ${
+            <div key={`${item.role}-${index}`} className={`animate-rise mb-3 whitespace-pre-wrap rounded-xl border p-3 last:mb-0 ${
               item.role === "assistant"
-                ? "border-[rgba(214,166,64,0.22)] bg-[rgba(214,166,64,0.06)]"
-                : "border-[rgba(143,191,99,0.2)] bg-[rgba(143,191,99,0.05)]"
+                ? "ml-0 mr-auto max-w-[86%] border-[rgba(214,166,64,0.22)] bg-[rgba(214,166,64,0.06)]"
+                : "ml-auto mr-0 max-w-[86%] border-[rgba(143,191,99,0.2)] bg-[rgba(143,191,99,0.08)]"
             }`}>
               <div className="mb-2 text-xs uppercase tracking-[0.14em]">
                 <span className={item.role === "assistant" ? "text-[var(--amber)]" : "text-[var(--green)]"}>
@@ -134,7 +137,7 @@ export function AdvisorChat({ companyId, embedded = false, initialMessages = [] 
           )}
         </div>
         {error && <p className="mt-3 text-sm text-[var(--red)]">{error}</p>}
-        <div className="mt-3 flex gap-2 rounded-md border border-[var(--border-muted)] bg-[rgba(3,7,8,0.42)] p-2">
+        <div className="mt-3 flex gap-2 rounded-xl border border-[var(--border-muted)] bg-[rgba(3,7,8,0.54)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <input
             aria-label="Advisor message"
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-3 text-sm outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--border-muted)]"

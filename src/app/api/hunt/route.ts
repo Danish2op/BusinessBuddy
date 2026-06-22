@@ -84,7 +84,8 @@ export async function POST(request: Request) {
       resend.sendEmail({
         to: email.to,
         subject: email.subject,
-        text: email.text
+        text: email.text,
+        html: email.html
       }),
     markEmailSent: async ({ reportId, emailId }) => {
       const { error } = await admin

@@ -50,7 +50,8 @@ describe("deliverHuntReports", () => {
       {
         to: "founder@example.com",
         subject: "Strategic Alert: free plan launched",
-        text: expect.stringContaining("Suggested response")
+        text: expect.stringContaining("Suggested response"),
+        html: expect.stringContaining("BusinessBuddy")
       }
     ]);
     expect(marked).toEqual([

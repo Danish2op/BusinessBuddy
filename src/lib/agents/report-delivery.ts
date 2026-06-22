@@ -16,6 +16,7 @@ type DeliverHuntReportsDependencies = {
     to: string;
     subject: string;
     text: string;
+    html?: string;
   }): Promise<ServiceResult<{ id: string }>>;
   markEmailSent(input: {
     reportId: string;
@@ -37,6 +38,79 @@ function emailTextFor(report: HuntReportDraft): string {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function escapeHtml(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function riskColor(risk: HuntReportDraft["risk_level"]) {
+  if (risk === "high") {
+    return "#ef756d";
+  }
+
+  if (risk === "med") {
+    return "#d6a640";
+  }
+
+  return "#8fbf63";
+}
+
+function emailHtmlFor(report: HuntReportDraft): string {
+  const title = escapeHtml(report.title);
+  const summary = escapeHtml(report.alert_body || report.summary).replaceAll("\n", "<br />");
+  const sourceUrl = report.source_url ? escapeHtml(report.source_url) : "";
+  const category = escapeHtml(report.category);
+  const risk = escapeHtml(report.risk_level.toUpperCase());
+  const color = riskColor(report.risk_level);
+
+  return `<!doctype html>
+<html>
+  <body style="margin:0;background:#030607;color:#f2f5ed;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#030607;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border:1px solid rgba(168,188,175,0.24);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02)),#0d1618;box-shadow:0 28px 90px rgba(0,0,0,0.42);overflow:hidden;">
+            <tr>
+              <td style="padding:26px 28px;border-bottom:1px solid rgba(91,116,119,0.28);">
+                <div style="font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#d6a640;">BusinessBuddy Strategic Alert</div>
+                <h1 style="margin:12px 0 0;font-size:26px;line-height:1.18;color:#f2f5ed;">${title}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 28px;">
+                <div style="margin-bottom:18px;">
+                  <span style="display:inline-block;margin-right:8px;border:1px solid rgba(214,166,64,0.35);border-radius:999px;padding:6px 10px;color:#d6a640;font-size:12px;">${category}</span>
+                  <span style="display:inline-block;border:1px solid ${color};border-radius:999px;padding:6px 10px;color:${color};font-size:12px;">Risk ${risk}</span>
+                </div>
+                <div style="border:1px solid rgba(91,116,119,0.28);border-radius:14px;background:rgba(3,7,8,0.55);padding:18px;color:#c3ccc2;font-size:15px;line-height:1.65;">
+                  ${summary}
+                </div>
+                <div style="margin-top:18px;border-left:3px solid #8fbf63;padding:12px 14px;background:rgba(143,191,99,0.08);color:#c3ccc2;font-size:14px;line-height:1.55;">
+                  <strong style="color:#f2f5ed;">Advisor suggestion:</strong> Review this move against your moat, then choose aggressive response, defensive positioning, or pivot toward a less-contested segment.
+                </div>
+                ${
+                  sourceUrl
+                    ? `<a href="${sourceUrl}" style="display:inline-block;margin-top:22px;border-radius:12px;background:#d6a640;color:#030607;text-decoration:none;font-weight:700;padding:12px 16px;">Open source</a>`
+                    : ""
+                }
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px;border-top:1px solid rgba(91,116,119,0.28);color:#79867f;font-size:12px;line-height:1.6;">
+                Sent by BusinessBuddy because monitoring is enabled for this company. Feed entry is saved in your War-Room.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
 }
 
 export async function deliverHuntReports(
@@ -79,7 +153,8 @@ export async function deliverHuntReports(
     const email = await dependencies.sendEmail({
       to: ownerEmail,
       subject: report.alert_subject || `Strategic Alert: ${report.title}`,
-      text: emailTextFor(report)
+      text: emailTextFor(report),
+      html: emailHtmlFor(report)
     });
 
     if (!email.ok) {

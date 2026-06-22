@@ -96,7 +96,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className={active ? "animate-rise grid gap-5" : "hidden"} aria-hidden={!active}>
+    <section className={active ? "animate-rise grid h-full min-h-0 gap-5" : "hidden"} aria-hidden={!active}>
       {children}
     </section>
   );
@@ -129,12 +129,12 @@ export function WarRoom({
   );
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)]">
+    <main className="dashboard-shell h-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)]">
       <div className="aurora-field" />
       <div className="pointer-events-none fixed inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:64px_64px]" />
 
-      <div className="relative mx-auto grid min-h-screen max-w-[1720px] gap-4 p-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-5">
-        <aside className="glass-panel animate-slide-in flex flex-col rounded-md p-3 lg:sticky lg:top-5 lg:h-[calc(100vh-2.5rem)]">
+      <div className="relative mx-auto grid h-full max-w-[1720px] gap-4 p-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-5">
+        <aside className="glass-panel animate-slide-in flex min-h-0 flex-col rounded-2xl p-3 lg:h-[calc(100vh-2.5rem)]">
           <div className="flex items-center gap-3 rounded-md border border-[rgba(214,166,64,0.2)] bg-[rgba(214,166,64,0.08)] p-3">
             <div className="grid h-11 w-11 place-items-center rounded-md bg-[var(--amber)] text-black shadow-[0_0_24px_rgba(214,166,64,0.26)]">
               <Radar size={22} />
@@ -184,8 +184,8 @@ export function WarRoom({
           </div>
         </aside>
 
-        <section className="min-w-0">
-          <header className="glass-panel animate-rise rounded-md p-5">
+        <section className="dashboard-workspace dashboard-scroll grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)]">
+          <header className="glass-panel animate-rise rounded-2xl p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--amber)]">
@@ -226,10 +226,10 @@ export function WarRoom({
             </div>
           </header>
 
-          <div className="mt-5">
+          <div className="mt-5 min-h-0 overflow-hidden">
             <Panel active={activePage === "overview"}>
-              <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-                <section className="glass-panel rounded-md p-5">
+              <div className="grid h-full min-h-0 gap-5 overflow-hidden xl:grid-cols-[1.05fr_0.95fr]">
+                <section className="glass-panel section-scroll rounded-2xl p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <Shield size={18} className="text-[var(--green)]" />
                     <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Strategic Summary</h2>
@@ -250,7 +250,7 @@ export function WarRoom({
                   )}
                 </section>
 
-                <section className="glass-panel rounded-md p-5">
+                <section className="glass-panel section-scroll rounded-2xl p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <BarChart3 size={18} className="text-[var(--amber)]" />
                     <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Signal Snapshot</h2>
@@ -276,13 +276,13 @@ export function WarRoom({
             </Panel>
 
             <Panel active={activePage === "advisor"}>
-              <div className="advisor-panel">
+              <div className="advisor-panel min-h-0">
                 <AdvisorChat companyId={companyId} embedded initialMessages={advisorMessages} />
               </div>
             </Panel>
 
             <Panel active={activePage === "feed"}>
-              <section className="glass-panel rounded-md p-5">
+              <section className="glass-panel grid min-h-0 grid-rows-[auto_minmax(0,1fr)] rounded-2xl p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Intelligence Feed</h2>
@@ -290,7 +290,7 @@ export function WarRoom({
                   </div>
                   <span className="rounded border border-[var(--border-muted)] px-3 py-1 text-xs text-[var(--text-muted)]">{reports.length} signals</span>
                 </div>
-                <div className="grid gap-3">
+                <div className="feed-scroll section-scroll grid min-h-0 gap-3 pr-2">
                   {reports.length === 0 && (
                     <div className="glass-row rounded p-6">
                       <p className="text-sm font-medium text-[var(--text-secondary)]">Feed arms on first scan</p>
@@ -320,57 +320,59 @@ export function WarRoom({
             </Panel>
 
             <Panel active={activePage === "competitors"}>
-              <section className="glass-panel rounded-md p-5">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-[var(--amber)]" />
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Radar View</h2>
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)]">Accepted competitors only</p>
-                </div>
-                <div className="grid gap-3">
-                  {competitors.length === 0 && (
-                    <div className="glass-row rounded p-5 text-sm text-[var(--text-muted)]">
-                      <p className="font-medium text-[var(--text-secondary)]">No radar targets yet</p>
-                      <p className="mt-2 leading-6">Add a real competitor below, or finish onboarding discovery, to arm the monitoring feed.</p>
+              <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-5">
+                <section className="glass-panel grid min-h-0 grid-rows-[auto_minmax(0,1fr)] rounded-2xl p-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-[var(--amber)]" />
+                      <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Radar View</h2>
                     </div>
-                  )}
-                  {competitors.map((competitor) => (
-                    <div key={competitor.id} className="glass-row animate-rise grid gap-3 rounded p-3 md:grid-cols-[1fr_auto]">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <CompanyLogo
-                          name={competitor.comp_name}
-                          website={competitor.website}
-                          logoUrl={competitor.knowledge_block?.logo_url}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{competitor.comp_name}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
-                            {competitor.analysis_summary || competitor.website || "Manual watch target"}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            {competitor.website && (
-                              <a className="inline-flex items-center gap-1 rounded border border-[var(--border-muted)] px-2 py-1 text-[var(--green)] hover:border-[var(--green)]" href={competitor.website} rel="noreferrer" target="_blank">
-                                Website <ExternalLink size={12} />
-                              </a>
-                            )}
-                            {competitor.linkedin_url && (
-                              <a className="inline-flex items-center gap-1 rounded border border-[var(--border-muted)] px-2 py-1 text-[var(--green)] hover:border-[var(--green)]" href={competitor.linkedin_url} rel="noreferrer" target="_blank">
-                                LinkedIn <ExternalLink size={12} />
-                              </a>
-                            )}
+                    <p className="text-xs text-[var(--text-muted)]">Accepted competitors only</p>
+                  </div>
+                  <div className="radar-scroll section-scroll grid min-h-0 gap-3 pr-2">
+                    {competitors.length === 0 && (
+                      <div className="glass-row rounded p-5 text-sm text-[var(--text-muted)]">
+                        <p className="font-medium text-[var(--text-secondary)]">No radar targets yet</p>
+                        <p className="mt-2 leading-6">Add a real competitor below, or finish onboarding discovery, to arm the monitoring feed.</p>
+                      </div>
+                    )}
+                    {competitors.map((competitor) => (
+                      <div key={competitor.id} className="glass-row animate-rise grid gap-3 rounded p-3 md:grid-cols-[1fr_auto]">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <CompanyLogo
+                            name={competitor.comp_name}
+                            website={competitor.website}
+                            logoUrl={competitor.knowledge_block?.logo_url}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{competitor.comp_name}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">
+                              {competitor.analysis_summary || competitor.website || "Manual watch target"}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                              {competitor.website && (
+                                <a className="inline-flex items-center gap-1 rounded border border-[var(--border-muted)] px-2 py-1 text-[var(--green)] hover:border-[var(--green)]" href={competitor.website} rel="noreferrer" target="_blank">
+                                  Website <ExternalLink size={12} />
+                                </a>
+                              )}
+                              {competitor.linkedin_url && (
+                                <a className="inline-flex items-center gap-1 rounded border border-[var(--border-muted)] px-2 py-1 text-[var(--green)] hover:border-[var(--green)]" href={competitor.linkedin_url} rel="noreferrer" target="_blank">
+                                  LinkedIn <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2 self-start rounded border border-[var(--border-muted)] px-2 py-1 text-xs text-[var(--text-muted)]">
+                          <Target size={13} className={riskTone(competitor.risk_level)} />
+                          Risk: <strong className="font-medium uppercase text-[var(--text-secondary)]">{competitor.risk_level}</strong>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 self-start rounded border border-[var(--border-muted)] px-2 py-1 text-xs text-[var(--text-muted)]">
-                        <Target size={13} className={riskTone(competitor.risk_level)} />
-                        Risk: <strong className="font-medium uppercase text-[var(--text-secondary)]">{competitor.risk_level}</strong>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              <CompetitorForm companyId={companyId} />
+                    ))}
+                  </div>
+                </section>
+                <CompetitorForm companyId={companyId} />
+              </div>
             </Panel>
           </div>
         </section>

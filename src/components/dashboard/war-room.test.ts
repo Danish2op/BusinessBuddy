@@ -32,8 +32,21 @@ describe("WarRoom source", () => {
     expect(source).toContain("setActivePage");
   });
 
+  it("keeps feed and radar in their own tightened scroll regions", () => {
+    expect(source).toContain("dashboard-scroll");
+    expect(source).toContain("feed-scroll");
+    expect(source).toContain("radar-scroll");
+  });
+
   it("labels risk as status instead of rendering a clickable-looking text pill", () => {
     expect(source).toContain("Risk:");
     expect(source).not.toContain("{competitor.risk_level}</span>");
+  });
+
+  it("contains dashboard scrolling inside active work surfaces", () => {
+    expect(source).toContain("dashboard-shell");
+    expect(source).toContain("dashboard-workspace");
+    expect(source).toContain("feed-scroll");
+    expect(source).toContain("radar-scroll");
   });
 });

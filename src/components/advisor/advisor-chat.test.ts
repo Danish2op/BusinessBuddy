@@ -19,4 +19,10 @@ describe("AdvisorChat source", () => {
   it("explains setup-required disabled state", () => {
     expect(source).toContain("Complete setup to enable advisor chat.");
   });
+
+  it("keeps chat history in its own scroll container", () => {
+    expect(source).toContain("advisor-scroll");
+    expect(source).toContain("min-h-0");
+    expect(source).toContain("overflow-y-auto");
+  });
 });
